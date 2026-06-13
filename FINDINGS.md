@@ -212,10 +212,14 @@ Tx trail (testnet): opt-in 1FB271FF, TrustSet 66E10DC0, swap A9E6F7A9, MPP Payme
   drives the loop. `allowedTools` whitelists only the `mcp__rwa__*` tools,
   `settingSources: []` keeps the host's settings/skills/MCPs out, `permissionMode:
   'bypassPermissions'` runs headless. Model via `AGENT_MODEL` (default `sonnet`).
-- **Could not run the model loop live here — no ANTHROPIC_API_KEY in this environment.**
-  Typechecks + builds. `index.ts` runs the model loop when a key is present and falls
-  back to the deterministic pipeline otherwise (also lets CI/demo run keyless). The
-  underlying tool flow is the same one proven live in Phase 3.
+- **Model loop VERIFIED LIVE on testnet** (once an ANTHROPIC_API_KEY was provided):
+  `pnpm demo:testnet` ran Claude (sonnet) which autonomously orchestrated the tools —
+  `get_status → ensure_funded → discover_issuances → opt_in_mpt → ensure_trustline →
+  swap_for_currency → pay_via_mpp → confirm_receipt` — and acquired 300 base units
+  (paid 10 RLUSD). `model loop finished subtype=success`; key never left OWS. The SDK
+  exposes tools lazily, so the model also calls `ToolSearch` to load schemas first.
+- `index.ts` runs the model loop when a key is present and falls back to the
+  deterministic pipeline otherwise (keyless CI/demo).
 
 ## Phase 5 — demo, tests, docs, CI
 - `scripts/demo.ts`: one-command orchestrator (boot merchant → point agent → acquire →
