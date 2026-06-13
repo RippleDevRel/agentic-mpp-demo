@@ -1,0 +1,20 @@
+{
+  "name": "@rwa/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./config": "./src/config.ts",
+    "./networks": "./src/networks.ts",
+    "./assets": "./src/assets.ts",
+    "./env": "./src/env.ts",
+    "./xrpl": "./src/xrpl.ts",
+    "./logger": "./src/logger.ts"
+  },
+  "dependencies": {
+    "xrpl": "^4.0.0",
+    "xrpl-mpp-sdk": "^0.1.0"
+  }
+}

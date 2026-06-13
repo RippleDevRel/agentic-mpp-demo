@@ -1,0 +1,25 @@
+# Local execution plan — never committed (plan §39)
+AUTONOMOUS_RWA_AGENT_PLAN.md
+CLAUD.md
+
+# Secrets and local state
+.env
+.env.local
+*.local
+.data/
+.ows/
+
+# Locally built SDK artifact (regenerated from pinned commit; see scripts/vendor-sdk.ts)
+vendor/
+
+# Build output
+dist/
+**/dist/
+*.tsbuildinfo
+
+# Deps
+node_modules/
+
+# Misc
+.DS_Store
+*.log

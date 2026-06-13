@@ -1,0 +1,17 @@
+{
+  "name": "@rwa/merchant",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rwa/shared": "workspace:*",
+    "mppx": "^0.7.0",
+    "xrpl": "^4.0.0",
+    "xrpl-mpp-sdk": "^0.1.0"
+  }
+}

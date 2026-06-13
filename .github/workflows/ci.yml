@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.6.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          # Plan rule: official npm registry only.
+          registry-url: https://registry.npmjs.org/
+
+      # xrpl-mpp-sdk is not yet on npm. Clone the pinned commit, build it, and pack
+      # the tarball that pnpm.overrides points at — BEFORE install. Remove this step
+      # once the SDK is published (and drop the overrides block in pnpm-workspace.yaml).
+      - name: Prebuild vendored xrpl-mpp-sdk
+        run: pnpm dlx tsx scripts/vendor-sdk.ts
+
+      # Not --frozen-lockfile: the vendored SDK tarball is regenerated each run and
+      # `npm pack` gzip output is not byte-reproducible, so its integrity hash varies.
+      # Switch to --frozen-lockfile once the SDK is published to npm.
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
