@@ -3,6 +3,29 @@
 Living log of every assumption, integration decision, and gap encountered while
 executing the build plan. Required deliverable per plan §10.6.
 
+## TL;DR — "what it takes" (plan §10.6)
+- **SDK on npm?** No. `xrpl-mpp-sdk` is consumed via one `pnpm` override → a locally
+  built tarball; going live on npm = delete the override block (one line).
+- **Which signing path worked (2.3)?** Full key isolation, no SDK fork, no seed: OWS
+  generates/holds the key; the signer recovers the secp256k1 pubkey from a `signHash`
+  signature (ECDSA recovery, address-matched) to set `SigningPubKey`, then OWS
+  `signAndSend` injects `TxnSignature` and broadcasts (HTTP JSON-RPC). The MPP payment
+  uses **push mode**: OWS signs+submits the Payment, then an mppx credential hands the
+  tx hash to the SDK server. Verified live on testnet, end to end.
+- **Credential interop gaps?** None blocking. mppx `Challenge.fromResponse` +
+  `Credential.serialize({challenge, payload:{type:'hash',hash}, source})` interoperate
+  with the SDK server's push-mode verify. (mppx 0.7 dropped `result.receipt`; recover
+  the reference via `Receipt.fromResponse(result.withReceipt(...))`.)
+- **What the SDK should expose for a clean consumer:** an external-signer constructor
+  on `Wallet`, e.g. `Wallet.fromSigner({ address, publicKey, sign })`, so the SDK
+  *client* `charge` can sign via OWS directly (today it signs internally with a
+  seed-derived Wallet). Until then the MPP leg uses push mode (above). Secondary: OWS
+  could expose the account public key (avoids the recovery dance) and accept a wss RPC.
+- **Assumptions made:** testnet network id ≤ 1024 so `NetworkID` is stripped; testnet
+  XRP/RLUSD AMM exists (checked via `check:testnet`); merchant = issuer = charge
+  recipient; one purchase buys the whole offered lot; MAX_SPEND enforced in-app (OWS
+  has no declarative amount rule). Local (Docker) mode authored but not executed here.
+
 ## Environment
 
 - Node v23.7.0, pnpm 11.6.0 (via corepack), npm 10.9.2, git 2.47.1.
@@ -194,8 +217,17 @@ Tx trail (testnet): opt-in 1FB271FF, TrustSet 66E10DC0, swap A9E6F7A9, MPP Payme
   back to the deterministic pipeline otherwise (also lets CI/demo run keyless). The
   underlying tool flow is the same one proven live in Phase 3.
 
-## Open items to verify during build
-- [ ] OWS `@open-wallet-standard/core` installs with darwin-arm64 prebuilt; `signAndSend`
-      produces a valid XRPL blob (resolves GAP 1 for setup txs).
-- [ ] Whether OWS exposes the pubkey via any API not yet found.
-- [ ] testnet XRP/RLUSD AMM reachable for the swap leg (check-testnet.ts).
+## Phase 5 — demo, tests, docs, CI
+- `scripts/demo.ts`: one-command orchestrator (boot merchant → point agent → acquire →
+  assert MPT lands). **Verified live on testnet: DEMO_OK**, agent acquired 300 base
+  units (paid 10 RLUSD), key never left OWS, in a single process.
+- Unit tests (vitest, 13 passing): reserve sizing, swap quote math, discovery dedup,
+  currency hex, and the **key-isolation source scan** (no `exportWallet`/seed paths).
+  Plus a network-gated integration smoke (`RUN_INTEGRATION=1`).
+- CI: prebuilds the vendored SDK → install → lint → typecheck → build → test.
+- `pnpm demo:local` needs Docker (xrpl-up); `pnpm demo:testnet` is the validated path.
+
+## Resolved items
+- [x] OWS installs darwin-arm64 prebuilt; `signAndSend` broadcasts via HTTP (not wss).
+- [x] OWS does not expose the pubkey → recovered via ECDSA from `signHash`.
+- [x] testnet XRP/RLUSD route reachable (~1.71 XRP/RLUSD) — `check:testnet` passes.

@@ -18,7 +18,9 @@
     "agent": "tsx packages/agent/src/index.ts",
     "setup:local": "tsx scripts/setup-local.ts",
     "check:testnet": "tsx scripts/check-testnet.ts",
-    "demo:local": "tsx scripts/demo.ts",
+    "demo": "tsx scripts/demo.ts",
+    "demo:testnet": "NETWORK=testnet tsx scripts/demo.ts",
+    "demo:local": "NETWORK=local tsx scripts/demo.ts",
     "sdk:vendor": "tsx scripts/vendor-sdk.ts"
   },
   "dependencies": {

@@ -24,6 +24,17 @@ async function iouBalance(
   })
 }
 
+/** Pure: XRP drops needed for `needValue` units at `dropsPerUnit`, plus slippage. */
+export function computeMaxXrpDrops(
+  needValue: string,
+  dropsPerUnit: number,
+  slippageBps: number,
+): bigint {
+  if (!Number.isFinite(dropsPerUnit) || dropsPerUnit <= 0) throw new Error('invalid book quality')
+  const raw = Number(needValue) * dropsPerUnit
+  return BigInt(Math.ceil(raw * (1 + slippageBps / 10_000)))
+}
+
 /**
  * Preflight an XRP -> payment-currency route via the order book (which includes
  * AMM liquidity) and return the XRP (drops) needed for `needValue`, with slippage.
@@ -50,15 +61,13 @@ async function quoteXrpDrops(
     // `quality` = TakerPays(drops) / TakerGets(RLUSD) = drops per unit.
     const best = offers[0] as { quality?: string }
     const dropsPerUnit = Number(best.quality ?? '0')
-    if (!Number.isFinite(dropsPerUnit) || dropsPerUnit <= 0) throw new Error('invalid book quality')
-    const raw = Number(needValue) * dropsPerUnit
-    const withSlip = Math.ceil(raw * (1 + slippageBps / 10_000))
+    const withSlip = computeMaxXrpDrops(needValue, dropsPerUnit, slippageBps)
     log.step('swap route preflight', {
       needValue,
       dropsPerUnit: dropsPerUnit.toFixed(2),
-      maxXrp: (withSlip / 1_000_000).toFixed(6),
+      maxXrp: (Number(withSlip) / 1_000_000).toFixed(6),
     })
-    return BigInt(withSlip)
+    return withSlip
   })
 }
 

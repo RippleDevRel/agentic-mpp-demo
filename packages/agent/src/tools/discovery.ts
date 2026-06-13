@@ -11,7 +11,7 @@ export interface DiscoveredIssuance {
   url: string
 }
 
-interface CatalogResponse {
+export interface CatalogResponse {
   merchant: string
   paymentCurrency: string
   items: Array<{
@@ -75,7 +75,18 @@ export async function discover(
     })
   }
 
-  const fresh = catalog.items
+  const fresh = filterAcquirable(catalog.items, acquired, merchantUrl)
+  log.step('acquirable issuances', { count: fresh.length, ids: fresh.map((f) => f.issuanceId) })
+  return fresh
+}
+
+/** Pure: keep in-stock, not-yet-acquired issuances and resolve their absolute URL. */
+export function filterAcquirable(
+  items: CatalogResponse['items'],
+  acquired: Set<string>,
+  merchantUrl: string,
+): DiscoveredIssuance[] {
+  return items
     .filter((it) => it.remainingUnits > 0 && !acquired.has(it.issuanceId))
     .map((it) => ({
       issuanceId: it.issuanceId,
@@ -84,7 +95,4 @@ export async function discover(
       remainingUnits: it.remainingUnits,
       url: new URL(it.endpoint, merchantUrl).toString(),
     }))
-
-  log.step('acquirable issuances', { count: fresh.length, ids: fresh.map((f) => f.issuanceId) })
-  return fresh
 }
