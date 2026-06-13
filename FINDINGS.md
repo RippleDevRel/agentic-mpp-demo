@@ -183,6 +183,17 @@ Tx trail (testnet): opt-in 1FB271FF, TrustSet 66E10DC0, swap A9E6F7A9, MPP Payme
 - `MPTHoldingInfo.balance` vs raw `MPTAmount` (account_objects) — pipeline uses the
   raw helper (`amount`).
 
+## Phase 4 — Claude Agent SDK brain
+- Built with `@anthropic-ai/claude-agent-sdk` 0.3.177: Phase 2/3 functions exposed as
+  in-process tools via `tool()` + `createSdkMcpServer()`; `query({prompt, options})`
+  drives the loop. `allowedTools` whitelists only the `mcp__rwa__*` tools,
+  `settingSources: []` keeps the host's settings/skills/MCPs out, `permissionMode:
+  'bypassPermissions'` runs headless. Model via `AGENT_MODEL` (default `sonnet`).
+- **Could not run the model loop live here — no ANTHROPIC_API_KEY in this environment.**
+  Typechecks + builds. `index.ts` runs the model loop when a key is present and falls
+  back to the deterministic pipeline otherwise (also lets CI/demo run keyless). The
+  underlying tool flow is the same one proven live in Phase 3.
+
 ## Open items to verify during build
 - [ ] OWS `@open-wallet-standard/core` installs with darwin-arm64 prebuilt; `signAndSend`
       produces a valid XRPL blob (resolves GAP 1 for setup txs).
