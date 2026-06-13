@@ -69,3 +69,19 @@ export function resolveRwaAsset(): RwaAssetDef {
     pricePerUnit: getEnv('RWA_PRICE') ?? '10',
   }
 }
+
+/**
+ * XLS-89 compliant MPT metadata so the issuance is discoverable by explorers
+ * (avoids the rippled "not properly formatted" warning). Field names follow the
+ * standard's short keys; the SDK hex-encodes the object.
+ */
+export function rwaMetadata(asset: RwaAssetDef, network: NetworkConfig): Record<string, unknown> {
+  return {
+    ticker: 'RWADMO',
+    name: asset.metadata,
+    desc: `${asset.metadata} — autonomous RWA demo on XRPL ${network.name}`,
+    icon: 'https://raw.githubusercontent.com/XRPLF/xrpl.org/master/static/img/logo.png',
+    asset_class: 'rwa',
+    issuer_name: 'Autonomous RWA Merchant',
+  }
+}

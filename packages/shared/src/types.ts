@@ -3,11 +3,14 @@ import type { IssuedCurrency, MPToken, NetworkId } from 'xrpl-mpp-sdk'
 /** Networks this project supports. `local` maps onto an xrpl-up sandbox (needs Docker). */
 export type NetworkName = 'local' | 'testnet'
 
+/** SDK networks this project actually uses (never mainnet; faucet-capable). */
+export type SdkNetwork = Exclude<NetworkId, 'mainnet'>
+
 export interface NetworkConfig {
   /** Project-level network name. */
   name: NetworkName
   /** What to pass to the SDK's `network` param (drives its defaults). */
-  sdkNetwork: NetworkId
+  sdkNetwork: SdkNetwork
   /** WebSocket RPC endpoint. */
   rpcUrl: string
   /** How funding is obtained: SDK/testnet faucet vs the local sandbox faucet. */
@@ -21,15 +24,12 @@ export type PaymentCurrencyKind = 'RLUSD' | 'XRP' | 'IOU'
 
 /**
  * A resolved payment currency, in the exact shape the SDK's `charge`/`Wallet`
- * APIs expect (`'XRP' | IssuedCurrency | MPToken`), plus our own metadata.
+ * APIs expect. Discriminated on `kind` so `kind !== 'XRP'` narrows `sdk` to an
+ * IssuedCurrency for trustline/accept calls.
  */
-export interface PaymentCurrency {
-  kind: PaymentCurrencyKind
-  /** Human label for logs (e.g. "RLUSD", "XRP", "USD"). */
-  label: string
-  /** SDK-shaped value for charge/preflight/trustline. `'XRP'` for native. */
-  sdk: 'XRP' | IssuedCurrency
-}
+export type PaymentCurrency =
+  | { kind: 'XRP'; label: string; sdk: 'XRP' }
+  | { kind: Exclude<PaymentCurrencyKind, 'XRP'>; label: string; sdk: IssuedCurrency }
 
 /** Description of the Real World Asset MPT the merchant issues. */
 export interface RwaAssetDef {

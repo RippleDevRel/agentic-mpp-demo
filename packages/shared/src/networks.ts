@@ -34,3 +34,11 @@ export function resolveNetwork(name?: string): NetworkConfig {
 
   throw new Error(`Unsupported NETWORK="${networkName}". Use "local" or "testnet".`)
 }
+
+/** SDK call options ({ network, rpcUrl }) so every SDK Wallet call hits the right endpoint. */
+export function sdkNet(network: NetworkConfig): {
+  network: NetworkConfig['sdkNetwork']
+  rpcUrl: string
+} {
+  return { network: network.sdkNetwork, rpcUrl: network.rpcUrl }
+}

@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"

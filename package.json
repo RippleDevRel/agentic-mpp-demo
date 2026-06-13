@@ -21,6 +21,12 @@
     "demo:local": "tsx scripts/demo.ts",
     "sdk:vendor": "tsx scripts/vendor-sdk.ts"
   },
+  "dependencies": {
+    "@rwa/agent": "workspace:*",
+    "@rwa/merchant": "workspace:*",
+    "@rwa/shared": "workspace:*",
+    "xrpl": "^4.0.0"
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.4.8",
     "@types/node": "^20.14.0",

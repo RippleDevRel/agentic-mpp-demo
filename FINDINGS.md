@@ -86,6 +86,27 @@ executing the build plan. Required deliverable per plan §10.6.
 - Reference: `examples/agent-template/src/{client,server}.ts`, `demo/mpt-charge.ts`
   (read-only; not forked).
 
+## Phase 1 — merchant (verified live on testnet)
+- Merchant = issuer = MPP charge recipient (one account). "Inventory" is a
+  `remainingUnits` counter; delivery mints the MPT to the buyer (issuer→holder),
+  so there is no self-minting. One purchase buys the whole offered lot.
+- `Wallet.createToken({ requireAuthorization: true })` sets `tfMPTRequireAuth`. ✓
+- mppx 0.7 changed the success result: it exposes only `withReceipt`, NOT
+  `result.receipt`. Recover the on-chain tx hash via `Receipt.fromResponse(peek)`
+  where `peek = result.withReceipt(...)`. The payer address is resolved from that
+  tx's `Account`.
+- `acceptToken` returns a discriminated `AcceptTokenResult` — guard `'hash' in res`.
+- `MPTHoldingInfo` uses `balance` (not `amount`); raw `account_objects` uses
+  `MPTAmount`. (Test harness initially checked the wrong field.)
+- MPT metadata must follow XLS-89 (`ticker`/`name`/`asset_class`/`issuer_name`/`icon`)
+  or rippled warns (non-fatal). `rwaMetadata()` now emits a compliant object.
+- **Live proof:** merchant `rD875xqXGEBWEL9Tat62AqCtfxsnp7NdVA` issued
+  `0115BE04…`; a buyer opted in, paid the 402 (XRP), and the ledger shows the buyer
+  holding `MPTAmount: 500` (5 units @ scale 2). Delivery authorize + issue both
+  validated.
+- Root package now depends on the workspace packages + `xrpl` so `scripts/`
+  (Phase 5 demo/orchestration) can import them.
+
 ## Open items to verify during build
 - [ ] OWS `@open-wallet-standard/core` installs with darwin-arm64 prebuilt; `signAndSend`
       produces a valid XRPL blob (resolves GAP 1 for setup txs).
