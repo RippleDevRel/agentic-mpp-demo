@@ -74,6 +74,47 @@ executing the build plan. Required deliverable per plan §10.6.
   security downgrade. The strict happy path keeps the key in OWS for everything except
   this leg, which is blocked pending the SDK enhancement.
 
+## Phase 2.3 RESOLVED — OWS-isolated XRPL signing works (proven on testnet)
+The target (key never leaves OWS, no SDK fork, no seed) is achievable for every tx
+the agent issues directly. Real installed OWS v1.3.2 Node API:
+- `createWallet(name, passphrase, words, vault)` → derives 10 chains incl.
+  `xrpl:mainnet` at `m/44'/144'/0'/0/0` (secp256k1). Address is network-agnostic.
+- `signAndSend(wallet, 'xrpl', txHex, passphrase, index, HTTP_rpc, vault)` → `{txHash}`.
+  It signs over `txHex` and injects ONLY `TxnSignature`; it **broadcasts via curl/HTTP
+  JSON-RPC (NOT wss)** and **expects `SigningPubKey` already embedded in txHex**.
+- `AccountInfo` exposes address only — **no public key** (GAP 1). `signTransaction`
+  returns a bare DER signature, no recoveryId.
+
+**The unlock:** recover the secp256k1 public key without the private key leaving OWS —
+`signHash(wallet,'xrpl',H)` → DER sig; parse (r,s); brute-force the 2 recovery bits with
+`@noble/curves`; derive the XRPL address for each candidate and keep the one matching the
+OWS address. Recovered `SigningPubKey` once, cache it. Then: build unsigned tx, set
+`SigningPubKey`, autofill via xrpl.js (WS), `delete NetworkID` (testnet id 1 must omit it),
+`encode()`, hand the hex to OWS `signAndSend` (HTTP). **Proven:** an AccountSet validated
+on testnet (`rcaeZ8Cw7…`), key never left OWS.
+
+Consequences for config: a NetworkConfig now carries BOTH a WS url (xrpl.js) and an
+HTTP JSON-RPC url (OWS broadcast). Dependency added: `@noble/curves` (agent) for recovery.
+
+This still leaves the **MPP payment leg** (SDK client `charge`) needing the SDK `Wallet`,
+which has no external-signer hook — recorded as the upstream SDK enhancement
+(`Wallet.fromSigner`). For that one leg the demo uses the env-gated, off-by-default
+`ALLOW_SEED_FALLBACK`; everything else (activation, TrustSet, MPTokenAuthorize opt-in,
+AMM swap) goes through the OWS signer with full isolation.
+
+## OWS policy model (Phase 2.1)
+- OWS declarative policy rules are only `allowed_chains` and `expires_at` — **no
+  native max-amount rule**. So MAX_SPEND is enforced in-app (the swap/payment tools);
+  OWS bounds the agent to XRPL-only + expiry. A future executable (WASM) policy could
+  add an on-device spend cap.
+- Policies are enforced **only when signing with an agent token** (`ows_key_...`), not
+  with the owner passphrase. So: owner creates wallet + policy + API key once; the
+  agent signs with the token. Implemented in tools/wallet.ts; token persisted in
+  `.data/agent.<net>.json` (gitignored — it's a capability, not the key).
+- **Phase 2 verified live:** agent wallet `r9N21UZHkayw7…` created (key in OWS),
+  policy `agent-treasury-xrpl-only` + token issued, funded 100 XRP from faucet, and an
+  AccountSet signed via the token reached `tesSUCCESS` (`D8E5522…`). Key never left OWS.
+
 ## SDK API facts relied upon (from source)
 - Constants (root export): `RLUSD_TESTNET = { currency:'524C555344…0000', issuer:'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV' }`,
   `BASE_RESERVE_DROPS='1000000'`, `OWNER_RESERVE_DROPS='200000'`, `XRPL_RPC_URLS`,

@@ -11,8 +11,10 @@ export interface NetworkConfig {
   name: NetworkName
   /** What to pass to the SDK's `network` param (drives its defaults). */
   sdkNetwork: SdkNetwork
-  /** WebSocket RPC endpoint. */
+  /** WebSocket RPC endpoint (xrpl.js). */
   rpcUrl: string
+  /** HTTP JSON-RPC endpoint (OWS broadcasts via curl, which does not speak wss). */
+  httpRpcUrl: string
   /** How funding is obtained: SDK/testnet faucet vs the local sandbox faucet. */
   faucetMode: 'sdk-testnet' | 'local'
   /** Build an explorer link for a tx hash, when one exists. */

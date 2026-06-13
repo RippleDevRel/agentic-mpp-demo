@@ -7,7 +7,8 @@ CLAUD.md
 .env.local
 *.local
 .data/
-.ows/
+.ows
+.ows*
 
 # Locally built SDK artifact (regenerated from pinned commit; see scripts/vendor-sdk.ts)
 vendor/
