@@ -115,6 +115,28 @@ AMM swap) goes through the OWS signer with full isolation.
   policy `agent-treasury-xrpl-only` + token issued, funded 100 XRP from faucet, and an
   AccountSet signed via the token reached `tesSUCCESS` (`D8E5522…`). Key never left OWS.
 
+## Phase 3.5 — MPP payment WITHOUT giving up key isolation (the better path)
+The SDK client `charge` signs internally with the SDK `Wallet` (no external-signer
+hook), and OWS keys are BIP39/BIP32-derived so there is no XRPL family-seed to hand
+`Wallet.fromSeed` — an SDK-Wallet fallback would be a *different account* than the
+funded/opted-in OWS one. Instead, the MPP pay leg is done in **push mode** using mppx
+primitives + OWS signing, so the key stays in OWS and the SDK-powered server still
+verifies the payment:
+1. `GET /rwa/:id` → 402; parse with mppx `Challenge.fromResponse(res)`.
+2. Build the XRPL Payment (XRP or RLUSD IOU) to `challenge.request.recipient`.
+3. **OWS signs + submits** it (push mode) → tx hash (key isolated).
+4. `Credential.serialize({ challenge, payload:{type:'hash',hash}, source:'did:pkh:xrpl:<net>:<addr>' })`
+   (no private key needed — the on-chain tx is the proof).
+5. Re-`GET` with `Authorization: <credential>` → SDK server `verifyPush` confirms → 200 + delivery.
+This is still MPP/mppx + the SDK-powered server; only the signing leg routes through OWS
+(not OWS's EVM-only `ows pay`). The clean upstream fix remains SDK `Wallet.fromSigner`,
+recorded as the required enhancement; the `ALLOW_SEED_FALLBACK` path is kept only as an
+off-by-default cross-check.
+
+Swap leg: XRP→RLUSD via an `OfferCreate` (tfImmediateOrCancel) signed through OWS — the
+offer-crossing engine consults AMM liquidity, no path-finding needed; quote/slippage from
+`book_offers`, capped by MAX_SPEND.
+
 ## SDK API facts relied upon (from source)
 - Constants (root export): `RLUSD_TESTNET = { currency:'524C555344…0000', issuer:'rQhWct2fv4Vc4KRjRgMrxa8xPN9Zx9iLKV' }`,
   `BASE_RESERVE_DROPS='1000000'`, `OWNER_RESERVE_DROPS='200000'`, `XRPL_RPC_URLS`,
@@ -147,6 +169,19 @@ AMM swap) goes through the OWS signer with full isolation.
   validated.
 - Root package now depends on the workspace packages + `xrpl` so `scripts/`
   (Phase 5 demo/orchestration) can import them.
+
+## Phase 3 VERIFIED LIVE — full autonomous acquisition on testnet (RLUSD path)
+From an OWS wallet with only XRP, the agent autonomously: discovered the merchant's
+issuance (on-ledger `account_objects mpt_issuance` + catalog) → opted in
+(MPTokenAuthorize) → set the RLUSD trust line → swapped XRP→RLUSD via an OfferCreate
+(IOC, ~1.71 XRP/RLUSD, got 10 RLUSD) → paid 10 RLUSD via MPP push mode → merchant
+verified the credential, authorized the holder, and delivered. **Agent received 300
+base units (3 @ scale 2). Every agent tx signed through OWS — key never left OWS.**
+Tx trail (testnet): opt-in 1FB271FF, TrustSet 66E10DC0, swap A9E6F7A9, MPP Payment
+817BD40D, issuer-auth 0467B227, delivery 367EC856.
+- XLS-89: `rwa` asset_class also requires `asset_subclass` — added.
+- `MPTHoldingInfo.balance` vs raw `MPTAmount` (account_objects) — pipeline uses the
+  raw helper (`amount`).
 
 ## Open items to verify during build
 - [ ] OWS `@open-wallet-standard/core` installs with darwin-arm64 prebuilt; `signAndSend`

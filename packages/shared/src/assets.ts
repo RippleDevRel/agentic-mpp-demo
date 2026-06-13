@@ -82,6 +82,7 @@ export function rwaMetadata(asset: RwaAssetDef, network: NetworkConfig): Record<
     desc: `${asset.metadata} — autonomous RWA demo on XRPL ${network.name}`,
     icon: 'https://raw.githubusercontent.com/XRPLF/xrpl.org/master/static/img/logo.png',
     asset_class: 'rwa',
+    asset_subclass: 'other',
     issuer_name: 'Autonomous RWA Merchant',
   }
 }
