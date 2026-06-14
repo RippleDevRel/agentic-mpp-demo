@@ -22,8 +22,7 @@ export function sizeFundingDrops(plan: FundingPlan): bigint {
 /**
  * Ensure the agent's XRPL account is activated and holds enough XRP to cover
  * reserves, the swap input, and fees. Pulls from the scriptable testnet faucet
- * (no seed needed — funds by destination address). Local sandbox funding goes
- * through xrpl-up (requires Docker) and is out of scope when Docker is absent.
+ * (no seed needed — funds by destination address).
  */
 export async function ensureFunded(
   address: string,
@@ -66,10 +65,7 @@ export async function ensureFunded(
   })
 }
 
-async function pullFaucet(address: string, network: NetworkConfig): Promise<void> {
-  if (network.faucetMode === 'local') {
-    throw new Error('Local sandbox funding requires xrpl-up (Docker). Use NETWORK=testnet.')
-  }
+async function pullFaucet(address: string, _network: NetworkConfig): Promise<void> {
   const res = await fetch(TESTNET_FAUCET, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

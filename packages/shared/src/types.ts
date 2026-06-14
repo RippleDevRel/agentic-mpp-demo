@@ -1,7 +1,7 @@
 import type { IssuedCurrency, MPToken, NetworkId } from 'xrpl-mpp-sdk'
 
-/** Networks this project supports. `local` maps onto an xrpl-up sandbox (needs Docker). */
-export type NetworkName = 'local' | 'testnet'
+/** Networks this project supports (testnet only). */
+export type NetworkName = 'testnet'
 
 /** SDK networks this project actually uses (never mainnet; faucet-capable). */
 export type SdkNetwork = Exclude<NetworkId, 'mainnet'>
@@ -15,14 +15,12 @@ export interface NetworkConfig {
   rpcUrl: string
   /** HTTP JSON-RPC endpoint (OWS broadcasts via curl, which does not speak wss). */
   httpRpcUrl: string
-  /** How funding is obtained: SDK/testnet faucet vs the local sandbox faucet. */
-  faucetMode: 'sdk-testnet' | 'local'
   /** Build an explorer link for a tx hash, when one exists. */
   explorerTx?: (hash: string) => string
 }
 
 /** The kind of currency the merchant charges in. */
-export type PaymentCurrencyKind = 'RLUSD' | 'XRP' | 'IOU'
+export type PaymentCurrencyKind = 'RLUSD' | 'XRP'
 
 /**
  * A resolved payment currency, in the exact shape the SDK's `charge`/`Wallet`

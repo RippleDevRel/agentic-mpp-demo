@@ -24,3 +24,6 @@ node_modules/
 # Misc
 .DS_Store
 *.log
+
+# Local upstream-friction notes (not committed)
+UPSTREAM_FRICTION.md

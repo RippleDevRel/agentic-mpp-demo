@@ -25,7 +25,7 @@ export function toCurrencyHex(code: string): string {
  * Imports the RLUSD issuer/currency from the SDK constant so they stay in sync,
  * and fires the issuer-discrepancy warning if the env issuer disagrees.
  */
-export function resolvePaymentCurrency(network: NetworkConfig): PaymentCurrency {
+export function resolvePaymentCurrency(_network: NetworkConfig): PaymentCurrency {
   const kind = (getEnv('PAYMENT_CURRENCY') ?? 'RLUSD').toUpperCase() as PaymentCurrencyKind
 
   if (kind === 'XRP') {
@@ -33,11 +33,6 @@ export function resolvePaymentCurrency(network: NetworkConfig): PaymentCurrency 
   }
 
   if (kind === 'RLUSD') {
-    if (network.name === 'local') {
-      throw new Error(
-        'PAYMENT_CURRENCY=RLUSD is not available on the local sandbox. Use IOU or XRP locally.',
-      )
-    }
     const envIssuer = getEnv('RLUSD_TESTNET_ISSUER')
     if (envIssuer && envIssuer !== RLUSD_TESTNET.issuer) {
       log.warn('RLUSD issuer discrepancy: env value differs from the SDK RLUSD_TESTNET constant', {
@@ -54,17 +49,7 @@ export function resolvePaymentCurrency(network: NetworkConfig): PaymentCurrency 
     }
   }
 
-  // Custom stable IOU (used on the local sandbox; issuer is created by setup-local).
-  const code = getEnv('LOCAL_STABLE_CURRENCY') ?? 'USD'
-  const issuer = getEnv('LOCAL_STABLE_ISSUER')
-  if (!issuer) {
-    throw new Error('PAYMENT_CURRENCY=IOU requires LOCAL_STABLE_ISSUER (set by setup-local).')
-  }
-  return {
-    kind: 'IOU',
-    label: code,
-    sdk: { currency: toCurrencyHex(code), issuer },
-  }
+  throw new Error(`Unsupported PAYMENT_CURRENCY="${kind}". Use RLUSD or XRP.`)
 }
 
 /** The RWA MPT definition the merchant issues, read from env with sane defaults. */

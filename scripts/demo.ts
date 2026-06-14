@@ -2,11 +2,10 @@
  * End-to-end demo orchestrator: boot the merchant, point the agent at it, run the
  * autonomous acquisition, and assert the RWA MPT lands in the agent wallet.
  *
- * Defaults to testnet (no Docker needed). With ANTHROPIC_API_KEY set, the agent is
- * model-driven; otherwise it runs the deterministic pipeline (same tools).
+ * Runs on testnet. With ANTHROPIC_API_KEY set, the agent is model-driven; otherwise
+ * it runs the deterministic pipeline (same tools).
  *
- * Run: pnpm demo:local   (NETWORK=local needs Docker + setup-local first)
- *      NETWORK=testnet pnpm exec tsx scripts/demo.ts
+ * Run: pnpm demo
  */
 
 import { buildAgentContext, runAcquisition, runAgentLoop } from '@rwa/agent'

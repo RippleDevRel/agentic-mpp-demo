@@ -7,7 +7,6 @@ export default defineConfig({
   entry: {
     'merchant/server': 'packages/merchant/src/server.ts',
     'agent/index': 'packages/agent/src/index.ts',
-    'scripts/setup-local': 'scripts/setup-local.ts',
     'scripts/check-testnet': 'scripts/check-testnet.ts',
     'scripts/demo': 'scripts/demo.ts',
   },

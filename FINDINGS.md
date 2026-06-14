@@ -23,17 +23,16 @@ executing the build plan. Required deliverable per plan §10.6.
   could expose the account public key (avoids the recovery dance) and accept a wss RPC.
 - **Assumptions made:** testnet network id ≤ 1024 so `NetworkID` is stripped; testnet
   XRP/RLUSD AMM exists (checked via `check:testnet`); merchant = issuer = charge
-  recipient; one purchase buys the whole offered lot; MAX_SPEND enforced in-app (OWS
-  has no declarative amount rule). Local (Docker) mode authored but not executed here.
+  recipient; one purchase buys the whole offered lot; MAX_SPEND enforced both in-app and
+  by an OWS executable policy. Testnet only — no local/Docker mode, no xrpl-up/rlusd-cli.
 
 ## Environment
 
 - Node v23.7.0, pnpm 11.6.0 (via corepack), npm 10.9.2, git 2.47.1.
-- **Docker is NOT installed.** `xrpl-up` local sandbox requires Docker (MPT+AMM at
-  genesis). Consequence: the `local` network / `pnpm demo:local` path cannot run on
-  this machine until Docker is installed. Build everything network-agnostic; verify
-  end-to-end on **testnet** where Docker is not needed, and document the Docker
-  prerequisite for `local`.
+- **Testnet only.** The `xrpl-up`/`rlusd-cli` ecosystem CLIs are NOT used: `@rlusd/cli`
+  is not published on npm (404), and `xrpl-up` is a Docker-based local-sandbox/operator
+  tool — out of scope here. The project runs entirely against XRPL testnet via xrpl.js +
+  the MPP SDK + OWS (no local/Docker mode).
 
 ## Pinned reference commits (read-only, never forked/vendored)
 
@@ -298,7 +297,7 @@ Tx trail (testnet): opt-in 1FB271FF, TrustSet 66E10DC0, swap A9E6F7A9, MPP Payme
   currency hex, and the **key-isolation source scan** (no `exportWallet`/seed paths).
   Plus a network-gated integration smoke (`RUN_INTEGRATION=1`).
 - CI: prebuilds the vendored SDK → install → lint → typecheck → build → test.
-- `pnpm demo:local` needs Docker (xrpl-up); `pnpm demo:testnet` is the validated path.
+- `pnpm demo` runs the full flow on testnet (the validated path).
 
 ## Resolved items
 - [x] OWS installs darwin-arm64 prebuilt; `signAndSend` broadcasts via HTTP (not wss).
