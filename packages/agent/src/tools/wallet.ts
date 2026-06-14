@@ -1,3 +1,5 @@
+import { chmodSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import {
   createApiKey,
   createPolicy,
@@ -5,12 +7,19 @@ import {
   getWallet,
   listWallets,
 } from '@open-wallet-standard/core'
-import { getEnv, type Logger, type NetworkConfig, requireEnv } from '@rwa/shared'
+import { getEnv, getEnvNumber, type Logger, type NetworkConfig, requireEnv } from '@rwa/shared'
 import { OwsXrplSigner } from '../signer/ows-xrpl-signer'
 import { type AgentStore, loadAgentStore, saveAgentStore } from '../state'
 
 /** OWS uses the `xrpl:mainnet` chain id for XRPL (addresses are network-agnostic). */
 const XRPL_CHAIN_ID = 'xrpl:mainnet'
+
+/** Absolute path to the executable spend-cap policy, made runnable for OWS. */
+function maxSpendPolicyExecutable(): string {
+  const path = fileURLToPath(new URL('../../policy/max-spend.mjs', import.meta.url))
+  chmodSync(path, 0o755)
+  return path
+}
 
 export interface AgentWallet {
   signer: OwsXrplSigner
@@ -21,9 +30,9 @@ export interface AgentWallet {
 /**
  * Ensure the agent has an OWS-managed wallet bounded by a policy, and return a
  * signer that uses the policy-enforced API token. The private key is generated
- * inside OWS and never leaves it. The policy restricts signing to XRPL only and
- * expires; spend is additionally capped in-app by MAX_SPEND (OWS declarative
- * policies have no native amount rule — see FINDINGS.md).
+ * inside OWS and never leaves it. The policy restricts signing to XRPL only,
+ * expires, and caps per-transaction XRP spend at MAX_SPEND via an OWS executable
+ * policy (enforced on-device before signing — see policy/max-spend.mjs).
  */
 export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Promise<AgentWallet> {
   const vaultPath = getEnv('OWS_VAULT_PATH')
@@ -52,23 +61,28 @@ export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Pr
   if (!xrpl) throw new Error('OWS wallet has no XRPL account')
   log.step('OWS agent wallet ready (key generated inside OWS)', { address: xrpl.address })
 
-  // Bound the agent: XRPL-only chain allowlist + expiry.
+  // Bound the agent: XRPL-only chain allowlist + expiry (declarative), AND a
+  // per-transaction XRP spend cap enforced on-device by an executable policy
+  // (OWS refuses to sign any tx spending more than MAX_SPEND XRP).
   const policyId = `${walletName}-xrpl-only`
+  const maxSpendXrp = getEnvNumber('MAX_SPEND', 50)
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
   const policy = {
     id: policyId,
-    name: 'Agent: XRPL only, time-bounded',
+    name: 'Agent: XRPL only, time-bounded, spend-capped',
     version: 1,
     created_at: new Date().toISOString(),
     rules: [
       { type: 'allowed_chains', chain_ids: [XRPL_CHAIN_ID] },
       { type: 'expires_at', timestamp: expiresAt },
     ],
+    executable: maxSpendPolicyExecutable(),
+    config: { maxSpendXrp },
     action: 'deny',
   }
   try {
     createPolicy(JSON.stringify(policy), vaultPath ?? undefined)
-    log.step('registered OWS policy', { policyId, allow: XRPL_CHAIN_ID, expiresAt })
+    log.step('registered OWS policy', { policyId, allow: XRPL_CHAIN_ID, maxSpendXrp, expiresAt })
   } catch (err) {
     log.warn('policy creation skipped (may already exist)', {
       msg: err instanceof Error ? err.message : String(err),

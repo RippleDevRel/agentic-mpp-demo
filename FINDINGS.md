@@ -224,6 +224,21 @@ longer carries `payment`; the agent only resolves the network. Verified live (mo
 tool order was discover → quote_resource → opt_in → ensure_trustline → swap → pay → confirm;
 issuer/amount came from the 402; 300 units acquired, key never left OWS.
 
+## OWS spend cap IMPLEMENTED via executable policy (per-tx, MAX_SPEND XRP)
+`policy/max-spend.mjs` is an OWS executable policy: OWS pipes the PolicyContext JSON
+(incl. `transaction.raw`) to it before signing; it decodes the XRPL tx, computes the XRP
+outflow (Payment SendMax/Amount, OfferCreate TakerGets, +Fee) and returns
+`{"allow":false,...}` if it exceeds `policy_config.maxSpendXrp` (default 50). Wired in
+tools/wallet.ts (policy gets `executable` + `config:{maxSpendXrp}` from MAX_SPEND).
+Non-tx signs (hash sign for pubkey recovery) and IOU/no-XRP-outflow txs are allowed.
+- Unit test (spawns the script): allows 19 XRP, **denies 60 XRP**, allows hash-sign.
+- Verified live (model-driven, MAX_SPEND=50): OWS invoked the policy on every signature;
+  opt-in, TrustSet, swap (~19 XRP), and the RLUSD payment all signed (0 denials); agent
+  acquired the MPT. So a single tx > 50 XRP would be refused at the OWS signing boundary.
+- Caveat: PER-TRANSACTION cap (OWS `spending.daily_total` is reserved → cumulative limits
+  would need the executable to keep its own state). The executable path is absolute and
+  baked into the persisted policy (prototype-grade).
+
 ## OWS enforcement of spend limits / token types
 Declarative OWS policy rules are only `allowed_chains` + `expires_at` (no amount/token
 rule). Richer enforcement is possible via an **executable policy**: OWS runs an external
