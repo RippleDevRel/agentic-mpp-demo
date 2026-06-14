@@ -34,8 +34,8 @@ async function main(): Promise<void> {
 
   console.log('=== booting merchant ===')
   const merchant = await startServer()
-  // Point the agent at the freshly-booted merchant.
-  process.env.MERCHANT_ADDRESS = merchant.ctx.store.address
+  // Hand the agent ONLY the seller's service endpoint — not its ledger address.
+  // The agent learns the payment recipient from each resource's 402 challenge.
   process.env.MERCHANT_URL = merchant.url
 
   try {

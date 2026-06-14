@@ -23,7 +23,7 @@ export interface CatalogResponse {
   }>
 }
 
-/** Enumerate the merchant's MPT issuances on-ledger (autonomy: discovery from chain). */
+/** Cross-check, on-ledger, the issuances of a merchant address LEARNED from the catalog. */
 async function ledgerIssuances(merchant: string, network: NetworkConfig): Promise<string[]> {
   return withClient(network.rpcUrl, async (client) => {
     const res = await client
@@ -47,36 +47,30 @@ async function ledgerIssuances(merchant: string, network: NetworkConfig): Promis
 }
 
 /**
- * Discover the merchant's RWA issuances the agent has not yet acquired. Cross-checks
- * the on-ledger issuances against the merchant catalog (which carries price + the
- * MPP endpoint). `acquired` dedupes so each issuance is acted on once.
+ * Discover what a seller offers from its SERVICE ENDPOINT alone — the agent is
+ * never handed the merchant's XRPL address. It reads the endpoint's catalog (the
+ * list of available resources); the merchant address is learned there and only
+ * used for an optional on-ledger cross-check. The binding payment recipient comes
+ * later, from each resource's 402 challenge (see tools/mpp.ts). `acquired` dedupes.
  */
 export async function discover(
-  params: {
-    merchantUrl: string
-    merchantAddress: string
-    network: NetworkConfig
-    acquired: Set<string>
-  },
+  params: { merchantUrl: string; network: NetworkConfig; acquired: Set<string> },
   log: Logger,
 ): Promise<DiscoveredIssuance[]> {
-  const { merchantUrl, merchantAddress, network, acquired } = params
-
-  const onLedger = await ledgerIssuances(merchantAddress, network)
-  log.step('on-ledger issuances discovered', { merchant: merchantAddress, count: onLedger.length })
+  const { merchantUrl, network, acquired } = params
 
   const res = await fetch(`${merchantUrl}/catalog`)
   if (!res.ok) throw new Error(`catalog fetch failed: ${res.status}`)
   const catalog = (await res.json()) as CatalogResponse
-  if (catalog.merchant !== merchantAddress) {
-    log.warn('catalog merchant differs from goal address', {
-      catalog: catalog.merchant,
-      goal: merchantAddress,
-    })
-  }
+  log.step('read seller catalog from endpoint', { endpoint: merchantUrl, seller: catalog.merchant })
+
+  // Optional autonomy touch: verify the catalog's issuances exist on-ledger, using
+  // the address we just LEARNED from the catalog (not one we were given).
+  const onLedger = await ledgerIssuances(catalog.merchant, network)
+  log.info('on-ledger cross-check of seller issuances', { count: onLedger.length })
 
   const fresh = filterAcquirable(catalog.items, acquired, merchantUrl)
-  log.step('acquirable issuances', { count: fresh.length, ids: fresh.map((f) => f.issuanceId) })
+  log.step('acquirable resources', { count: fresh.length, ids: fresh.map((f) => f.issuanceId) })
   return fresh
 }
 

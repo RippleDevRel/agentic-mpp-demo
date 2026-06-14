@@ -18,8 +18,8 @@ export interface AcquireDeps {
   signer: OwsXrplSigner
   network: NetworkConfig
   payment: PaymentCurrency
+  /** The seller's service endpoint — the ONLY merchant locator the agent is given. */
   merchantUrl: string
-  merchantAddress: string
   maxSpendXrp: number
   slippageBps: number
   log: Logger
@@ -102,12 +102,7 @@ export async function runAcquisition(
   )
 
   const issuances = await discover(
-    {
-      merchantUrl: deps.merchantUrl,
-      merchantAddress: deps.merchantAddress,
-      network: deps.network,
-      acquired,
-    },
+    { merchantUrl: deps.merchantUrl, network: deps.network, acquired },
     deps.log,
   )
   if (issuances.length === 0) {

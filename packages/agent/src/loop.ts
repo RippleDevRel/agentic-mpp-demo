@@ -55,16 +55,11 @@ function buildTools(deps: AcquireDeps, store: AgentStore) {
 
   const discoverTool = tool(
     'discover_issuances',
-    "Discover the merchant's RWA MPT issuances not yet acquired. Returns each issuance's id, price, currency, and the MPP URL to pay.",
+    "Read the seller's service endpoint to list the RWA resources on offer that you have not yet acquired. Returns each resource's id and the URL to request it. Payment details (recipient, amount) come from that URL's 402 challenge when you pay.",
     {},
     async () => {
       const items = await discover(
-        {
-          merchantUrl: deps.merchantUrl,
-          merchantAddress: deps.merchantAddress,
-          network: deps.network,
-          acquired,
-        },
+        { merchantUrl: deps.merchantUrl, network: deps.network, acquired },
         deps.log,
       )
       return ok(items)
@@ -148,6 +143,11 @@ function buildTools(deps: AcquireDeps, store: AgentStore) {
 }
 
 const SYSTEM_PROMPT = `You are an autonomous buyer agent operating a wallet on the XRP Ledger.
+
+You are given ONLY the seller's service endpoint (a URL) — not its ledger address. You
+discover what is on offer by reading that endpoint, and you learn each purchase's payment
+details (recipient, amount, currency) from the resource's HTTP 402 "Payment Required"
+challenge when you pay it. Never assume or hard-code the seller's address.
 
 Your wallet's private key lives inside Open Wallet Standard (OWS) and never leaves it;
 every transaction is signed there. Use ONLY the provided tools — do not attempt any

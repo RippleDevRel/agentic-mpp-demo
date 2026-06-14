@@ -193,6 +193,17 @@ offer-crossing engine consults AMM liquidity, no path-finding needed; quote/slip
 - Root package now depends on the workspace packages + `xrpl` so `scripts/`
   (Phase 5 demo/orchestration) can import them.
 
+## Design correction — agent gets the endpoint, not the merchant address (x402 model)
+The agent must not be handed the merchant's XRPL address. Its only input is the seller's
+**service endpoint** (`MERCHANT_URL`, in the goal). It reads the endpoint's catalog (the
+list of available resources) to find what to buy, and learns the binding **payment
+recipient/amount/currency from each resource's 402 challenge** (`tools/mpp.ts` already
+takes the recipient from `challenge.request.recipient`). The merchant address is only
+*discovered* (from the catalog) for an optional on-ledger cross-check — never given.
+Removed `MERCHANT_ADDRESS` as an agent input across context/pipeline/loop/discovery;
+goal sentence now references the endpoint. The catalog is "la liste des ressources
+disponibles", which the design explicitly allows.
+
 ## Phase 3 VERIFIED LIVE — full autonomous acquisition on testnet (RLUSD path)
 From an OWS wallet with only XRP, the agent autonomously: discovered the merchant's
 issuance (on-ledger `account_objects mpt_issuance` + catalog) → opted in

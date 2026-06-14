@@ -9,7 +9,7 @@ paying through the Machine Payments Protocol (MPP).
 The headline is the **autonomy of the setup**, not the sophistication of the purchase.
 The agent starts with one sentence:
 
-> _"Acquire every RWA token issued by merchant `<MERCHANT_ADDRESS>` on the XRP Ledger."_
+> _"Acquire every RWA token available from the merchant whose service endpoint is `<MERCHANT_URL>`."_
 
 Everything else — creating a wallet, funding it, discovering issuances, acquiring the
 payment currency, opting in, paying, taking delivery — it figures out. **The private
@@ -41,8 +41,11 @@ does not fork or vendor either.
 
 - **Operator setup** = the merchant. It is bootstrapped (funded, issuance created)
   with no manual steps when the server starts.
-- **Agent autonomy** = the buyer. It is given *only* the goal sentence and an API key;
-  no wallet, funding, trust line, authorization, or swap is pre-provisioned.
+- **Agent autonomy** = the buyer. It is given *only* the seller's **service endpoint**
+  (a URL) and an API key — **not** the merchant's ledger address. It reads the endpoint's
+  catalog to find the resources on offer and learns each purchase's **payment recipient,
+  amount, and currency from the resource's HTTP 402 challenge** when it pays. No wallet,
+  funding, trust line, authorization, or swap is pre-provisioned.
 
 ### Key isolation (the crux)
 
@@ -85,7 +88,7 @@ without one it runs the same tools through a deterministic pipeline (handy for C
 Run the agent on its own against an existing merchant:
 
 ```bash
-OWS_PASSPHRASE=... MERCHANT_ADDRESS=r... MERCHANT_URL=http://localhost:8787 \
+OWS_PASSPHRASE=... MERCHANT_URL=http://localhost:8787 \
   ANTHROPIC_API_KEY=... pnpm --filter @rwa/agent start
 ```
 
@@ -111,8 +114,8 @@ NETWORK=local pnpm exec tsx scripts/demo.ts
 | `NETWORK` | `local` \| `testnet` (default testnet) |
 | `XRPL_RPC_URL` / `XRPL_HTTP_RPC_URL` | optional WS / HTTP RPC overrides |
 | `MERCHANT_SEED` | operator-held; if empty the merchant generates + faucet-funds one |
-| `MERCHANT_ADDRESS` | the agent's goal address (printed by the merchant on boot) |
-| `MERCHANT_PORT` / `MERCHANT_URL` | merchant HTTP port / URL the agent calls |
+| `MERCHANT_PORT` | merchant HTTP port |
+| `MERCHANT_URL` | the seller endpoint the agent is given (its only merchant locator; default `http://localhost:8787`) |
 | `RWA_PRICE`, `RWA_AVAILABLE_UNITS`, `RWA_ASSET_SCALE`, `RWA_METADATA` | RWA issuance + pricing |
 | `MPP_SECRET_KEY` | mppx server secret |
 | `PAYMENT_CURRENCY` | `RLUSD` \| `XRP` \| `IOU` |
