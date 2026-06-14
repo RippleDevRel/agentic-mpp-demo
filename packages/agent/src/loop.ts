@@ -6,9 +6,9 @@ import type { AgentStore } from './state'
 import { saveAgentStore } from './state'
 import { discover } from './tools/discovery'
 import { ensureFunded } from './tools/funding'
-import { payViaMpp } from './tools/mpp'
-import { ensurePaymentCurrency } from './tools/swap'
-import { ensurePaymentTrustline, optInToMpt } from './tools/trustline'
+import { payViaMpp, quoteResource } from './tools/mpp'
+import { ensureIouBalance } from './tools/swap'
+import { ensureIouTrustline, optInToMpt } from './tools/trustline'
 
 type ToolResult = { content: Array<{ type: 'text'; text: string }> }
 const ok = (data: unknown): ToolResult => ({
@@ -66,6 +66,23 @@ function buildTools(deps: AcquireDeps, store: AgentStore) {
     },
   )
 
+  const quoteTool = tool(
+    'quote_resource',
+    'Request a resource URL to read its 402 challenge WITHOUT paying. Returns the payment terms learned from the merchant: recipient address, amount, and currency (XRP, or an IOU with its currency code + issuer). Use these values to drive the trustline, swap, and payment.',
+    { url: z.string() },
+    async ({ url }) => {
+      const q = await quoteResource(url, deps.log)
+      return ok({
+        recipient: q.recipient,
+        amount: q.amount,
+        currencyKind: q.currency.kind,
+        ...(q.currency.kind === 'IOU'
+          ? { currency: q.currency.currency, issuer: q.currency.issuer }
+          : {}),
+      })
+    },
+  )
+
   const optInTool = tool(
     'opt_in_mpt',
     'Holder-side opt-in (MPTokenAuthorize) to a permissioned RWA MPT. Must be done before paying.',
@@ -78,36 +95,36 @@ function buildTools(deps: AcquireDeps, store: AgentStore) {
 
   const trustlineTool = tool(
     'ensure_trustline',
-    'Set the trust line to the payment-currency issuer so the agent can hold and pay in it. No-op for XRP.',
-    {},
-    async () => {
-      await ensurePaymentTrustline(deps.signer, deps.network, deps.payment, deps.log)
-      return ok({ trustline: deps.payment.label })
+    'Set the trust line to an IOU issuer (the currency + issuer from a quote) so the agent can hold and pay it. Only needed when the quoted currency is an IOU, not XRP.',
+    { currency: z.string(), issuer: z.string() },
+    async ({ currency, issuer }) => {
+      await ensureIouTrustline(deps.signer, deps.network, { currency, issuer }, deps.log)
+      return ok({ trustline: { currency, issuer } })
     },
   )
 
   const swapTool = tool(
     'swap_for_currency',
-    'Acquire the payment currency by swapping XRP on-chain (OfferCreate, AMM-aware), up to MAX_SPEND. requiredValue is the amount of payment currency needed.',
-    { requiredValue: z.string() },
-    async ({ requiredValue }) => {
-      await ensurePaymentCurrency(
+    'Acquire an IOU by swapping XRP on-chain (OfferCreate, AMM-aware), up to MAX_SPEND. Pass requiredValue and the currency + issuer from the quote.',
+    { requiredValue: z.string(), currency: z.string(), issuer: z.string() },
+    async ({ requiredValue, currency, issuer }) => {
+      await ensureIouBalance(
         deps.signer,
         deps.network,
-        deps.payment,
+        { currency, issuer },
         { requiredValue, maxSpendXrp: deps.maxSpendXrp, slippageBps: deps.slippageBps },
         deps.log,
       )
-      return ok({ acquired: deps.payment.label, requiredValue })
+      return ok({ acquired: { currency, issuer }, requiredValue })
     },
   )
 
   const payTool = tool(
     'pay_via_mpp',
-    'Pay an MPP-protected issuance URL (push mode, signed via OWS) and take delivery. Returns the payment tx hash.',
+    'Pay an MPP-protected resource URL (push mode, signed via OWS) and take delivery. Returns the payment tx hash.',
     { url: z.string() },
     async ({ url }) => {
-      const outcome = await payViaMpp(deps.signer, deps.network, url, deps.log)
+      const outcome = await payViaMpp(deps.signer, deps.network, url, deps.maxSpendXrp, deps.log)
       return ok({ paymentHash: outcome.paymentHash, delivered: outcome.delivered })
     },
   )
@@ -134,6 +151,7 @@ function buildTools(deps: AcquireDeps, store: AgentStore) {
     getStatus,
     ensureFundedTool,
     discoverTool,
+    quoteTool,
     optInTool,
     trustlineTool,
     swapTool,
@@ -162,16 +180,20 @@ Hard safety bounds (never violate):
 Approach, step by step:
 1. get_status to see your address, balance, and what is already acquired.
 2. ensure_funded so you can cover reserves, the swap, and fees.
-3. discover_issuances to list what the merchant offers that you do not yet own.
-4. For EACH issuance, in order:
-   a. opt_in_mpt (the permissioned MPT requires your holder opt-in before payment),
-   b. ensure_trustline (so you can hold/pay the payment currency),
-   c. swap_for_currency with requiredValue = the issuance price (skip if already held),
-   d. pay_via_mpp with the issuance url,
+3. discover_issuances to list the resources on offer (id + URL) you do not yet own.
+4. For EACH resource, in order:
+   a. quote_resource with its URL to learn the payment terms from the 402: recipient,
+      amount, and currency (XRP, or an IOU with currency code + issuer),
+   b. opt_in_mpt (the permissioned MPT requires your holder opt-in before payment),
+   c. if the quoted currency is an IOU: ensure_trustline {currency, issuer} from the
+      quote, then swap_for_currency with requiredValue = the quoted amount and the same
+      {currency, issuer}. If the quoted currency is XRP, skip this step (you hold XRP).
+   d. pay_via_mpp with the resource URL,
    e. confirm_receipt with the issuance id.
-5. When all discovered issuances are confirmed received, summarize and stop.
+5. When all discovered resources are confirmed received, summarize and stop.
 
-Reason explicitly about each step. Prefer doing the setup actions yourself via the tools.`
+Reason explicitly about each step. Trust the 402 quote — not any assumption — for the
+currency, issuer, and amount. Prefer doing the setup actions yourself via the tools.`
 
 /**
  * Run the autonomous acquisition driven by a Claude model (Claude Agent SDK).

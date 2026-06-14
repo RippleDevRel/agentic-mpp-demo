@@ -2,12 +2,8 @@ import { type Logger, type NetworkConfig, withClient } from '@rwa/shared'
 
 export interface DiscoveredIssuance {
   issuanceId: string
-  /** Asking price in payment-currency display units (from the merchant 402/catalog). */
-  price: string
-  /** Payment currency label (e.g. RLUSD, XRP). */
-  currency: string
   remainingUnits: number
-  /** Absolute MPP-protected URL to acquire this issuance. */
+  /** Absolute MPP-protected URL to request this resource (its 402 carries the price). */
   url: string
 }
 
@@ -84,8 +80,6 @@ export function filterAcquirable(
     .filter((it) => it.remainingUnits > 0 && !acquired.has(it.issuanceId))
     .map((it) => ({
       issuanceId: it.issuanceId,
-      price: it.price,
-      currency: it.currency,
       remainingUnits: it.remainingUnits,
       url: new URL(it.endpoint, merchantUrl).toString(),
     }))

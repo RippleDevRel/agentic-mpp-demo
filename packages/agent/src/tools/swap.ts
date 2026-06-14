@@ -1,6 +1,6 @@
-import { type Logger, type NetworkConfig, type PaymentCurrency, withClient } from '@rwa/shared'
-import { toDrops } from 'xrpl-mpp-sdk'
+import { currencyLabel, type Logger, type NetworkConfig, toDrops, withClient } from '@rwa/shared'
 import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
+import type { IouCurrency } from './trustline'
 
 const TF_IMMEDIATE_OR_CANCEL = 0x00020000
 
@@ -72,28 +72,28 @@ async function quoteXrpDrops(
 }
 
 /**
- * Ensure the agent holds at least `requiredValue` of the payment currency. No-op
- * for XRP. Otherwise swaps XRP -> currency on-chain via an OfferCreate
- * (ImmediateOrCancel) signed through OWS — the offer-crossing engine consults
- * AMM liquidity, so no path-finding is needed. Never spends beyond MAX_SPEND.
+ * Ensure the agent holds at least `requiredValue` of an IOU (the currency LEARNED
+ * from the 402). Swaps XRP -> IOU on-chain via an OfferCreate (ImmediateOrCancel)
+ * signed through OWS — the offer-crossing engine consults AMM liquidity, so no
+ * path-finding is needed. Never spends beyond MAX_SPEND.
  */
-export async function ensurePaymentCurrency(
+export async function ensureIouBalance(
   signer: OwsXrplSigner,
   network: NetworkConfig,
-  payment: PaymentCurrency,
+  iou: IouCurrency,
   params: { requiredValue: string; maxSpendXrp: number; slippageBps: number },
   log: Logger,
 ): Promise<void> {
-  if (payment.kind === 'XRP') return
+  const label = currencyLabel(iou.currency)
   const address = signer.address()
-  const have = await iouBalance(network, address, payment.sdk)
+  const have = await iouBalance(network, address, iou)
   if (Number(have) >= Number(params.requiredValue)) {
-    log.info(`already hold enough ${payment.label}`, { have, required: params.requiredValue })
+    log.info(`already hold enough ${label}`, { have, required: params.requiredValue })
     return
   }
 
   const need = (Number(params.requiredValue) - Number(have)).toString()
-  const maxXrpDrops = await quoteXrpDrops(network, payment.sdk, need, params.slippageBps, log)
+  const maxXrpDrops = await quoteXrpDrops(network, iou, need, params.slippageBps, log)
   const capDrops = BigInt(toDrops(String(params.maxSpendXrp)))
   if (maxXrpDrops > capDrops) {
     throw new Error(
@@ -101,22 +101,22 @@ export async function ensurePaymentCurrency(
     )
   }
 
-  log.step(`swapping XRP -> ${payment.label}`, { need, maxXrpDrops: maxXrpDrops.toString() })
+  log.step(`swapping XRP -> ${label}`, { need, maxXrpDrops: maxXrpDrops.toString() })
   await signer.signAndSubmit(
     {
       TransactionType: 'OfferCreate',
       TakerGets: maxXrpDrops.toString(),
-      TakerPays: { currency: payment.sdk.currency, issuer: payment.sdk.issuer, value: need },
+      TakerPays: { currency: iou.currency, issuer: iou.issuer, value: need },
       Flags: TF_IMMEDIATE_OR_CANCEL,
     },
-    { label: `OfferCreate XRP->${payment.label}` },
+    { label: `OfferCreate XRP->${label}` },
   )
 
-  const after = await iouBalance(network, address, payment.sdk)
+  const after = await iouBalance(network, address, iou)
   if (Number(after) < Number(params.requiredValue)) {
     throw new Error(
-      `swap did not yield enough ${payment.label}: have ${after}, need ${params.requiredValue}`,
+      `swap did not yield enough ${label}: have ${after}, need ${params.requiredValue}`,
     )
   }
-  log.info(`acquired ${payment.label} via swap`, { balance: after })
+  log.info(`acquired ${label} via swap`, { balance: after })
 }

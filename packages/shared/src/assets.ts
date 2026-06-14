@@ -5,6 +5,13 @@ import type { NetworkConfig, PaymentCurrency, PaymentCurrencyKind, RwaAssetDef }
 
 const log = createLogger('assets')
 
+/** Human label for an IOU currency code (decode 40-char hex to ASCII; else as-is). */
+export function currencyLabel(code: string): string {
+  if (!/^[0-9A-Fa-f]{40}$/.test(code)) return code
+  const ascii = Buffer.from(code, 'hex').toString('ascii').replace(/\0+$/, '')
+  return /^[\x20-\x7e]+$/.test(ascii) && ascii.length > 0 ? ascii : code
+}
+
 /** Pad a currency code to the 40-char hex form when it exceeds 3 ASCII chars. */
 export function toCurrencyHex(code: string): string {
   if (code.length <= 3) return code

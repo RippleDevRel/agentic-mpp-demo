@@ -212,6 +212,30 @@ So the policy allowlist must be `xrpl:mainnet` to permit signing — using `xrpl
 would make every sign call mismatch and be **denied**. The key never touches mainnet
 because no mainnet RPC is ever used; network is bounded by `NETWORK=testnet`, not the policy.
 
+## Refactor — agent is currency-agnostic, learns terms from the 402 (least-info)
+Previously the trustline + swap used a config-baked payment currency (the SDK
+`RLUSD_TESTNET` constant), so the agent "knew" the RLUSD issuer before the 402 — a
+fake/wrong issuer in config could have mis-driven it. Now the agent resolves NO payment
+currency from config: it `quoteResource(url)` → reads the 402 → learns
+{recipient, amount, currency, issuer}, then drives `ensureIouTrustline` + `ensureIouBalance`
+(swap) from THOSE values, and pays. New flow per resource:
+quote → opt-in → (if IOU) trust+swap from the quote → pay → confirm. `AcquireDeps` no
+longer carries `payment`; the agent only resolves the network. Verified live (model-driven):
+tool order was discover → quote_resource → opt_in → ensure_trustline → swap → pay → confirm;
+issuer/amount came from the 402; 300 units acquired, key never left OWS.
+
+## OWS enforcement of spend limits / token types
+Declarative OWS policy rules are only `allowed_chains` + `expires_at` (no amount/token
+rule). Richer enforcement is possible via an **executable policy**: OWS runs an external
+program with a `PolicyContext` JSON (transaction.to / value / raw hex, chain_id, wallet_id,
+api_key_id, spending.{daily_total,date}, timestamp) and honors its allow/deny BEFORE
+signing. So per-tx caps, destination allowlists, and token/issuer allowlists are
+enforceable in OWS by decoding the tx in the executable. Caveats: `spending.daily_total`
+is "reserved for future use" (rolling daily limits need the executable's own state), and
+for XRPL IOU/MPT the executable must decode the raw tx (value is only populated for native
+XRP). Today MAX_SPEND is enforced in-app (the swap caps XRP) + token scope via the agent's
+tools; moving them to an executable policy would add defense-in-depth at the signing boundary.
+
 ## Design correction — agent gets the endpoint, not the merchant address (x402 model)
 The agent must not be handed the merchant's XRPL address. Its only input is the seller's
 **service endpoint** (`MERCHANT_URL`, in the goal). It reads the endpoint's catalog (the

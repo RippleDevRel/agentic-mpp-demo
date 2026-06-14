@@ -1,11 +1,17 @@
 import {
+  currencyLabel,
   type Logger,
   listMptHoldings,
   type NetworkConfig,
-  type PaymentCurrency,
   withClient,
 } from '@rwa/shared'
 import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
+
+/** An IOU currency as learned from a 402 challenge. */
+export interface IouCurrency {
+  currency: string
+  issuer: string
+}
 
 /** True if the account already trusts the given IOU issuer/currency. */
 async function hasTrustline(
@@ -28,32 +34,28 @@ async function hasTrustline(
 }
 
 /**
- * Set the agent's trust line to the payment-currency issuer so it can hold and
- * pay in that currency. No-op for XRP. Signed through OWS (key isolated).
+ * Set the agent's trust line to the IOU issuer (LEARNED from the 402) so it can
+ * hold and pay in that currency. Signed through OWS (key isolated).
  */
-export async function ensurePaymentTrustline(
+export async function ensureIouTrustline(
   signer: OwsXrplSigner,
   network: NetworkConfig,
-  payment: PaymentCurrency,
+  iou: IouCurrency,
   log: Logger,
 ): Promise<void> {
-  if (payment.kind === 'XRP') return
-  const exists = await hasTrustline(network, signer.address(), payment.sdk)
+  const label = currencyLabel(iou.currency)
+  const exists = await hasTrustline(network, signer.address(), iou)
   if (exists) {
-    log.info(`trust line to ${payment.label} already set`)
+    log.info(`trust line to ${label} already set`, { issuer: iou.issuer })
     return
   }
-  log.step(`setting trust line to ${payment.label}`)
+  log.step(`setting trust line to ${label}`, { issuer: iou.issuer })
   await signer.signAndSubmit(
     {
       TransactionType: 'TrustSet',
-      LimitAmount: {
-        currency: payment.sdk.currency,
-        issuer: payment.sdk.issuer,
-        value: '1000000000',
-      },
+      LimitAmount: { currency: iou.currency, issuer: iou.issuer, value: '1000000000' },
     },
-    { label: `TrustSet (${payment.label})` },
+    { label: `TrustSet (${label})` },
   )
 }
 

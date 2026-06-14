@@ -1,8 +1,8 @@
 import {
+  currencyLabel,
   type Logger,
   listMptHoldings,
   type NetworkConfig,
-  type PaymentCurrency,
   type RunSummary,
   withClient,
 } from '@rwa/shared'
@@ -10,14 +10,13 @@ import type { OwsXrplSigner } from './signer/ows-xrpl-signer'
 import { type AgentStore, saveAgentStore } from './state'
 import { type DiscoveredIssuance, discover } from './tools/discovery'
 import { ensureFunded } from './tools/funding'
-import { payViaMpp } from './tools/mpp'
-import { ensurePaymentCurrency } from './tools/swap'
-import { ensurePaymentTrustline, optInToMpt } from './tools/trustline'
+import { payViaMpp, quoteResource } from './tools/mpp'
+import { ensureIouBalance } from './tools/swap'
+import { ensureIouTrustline, optInToMpt } from './tools/trustline'
 
 export interface AcquireDeps {
   signer: OwsXrplSigner
   network: NetworkConfig
-  payment: PaymentCurrency
   /** The seller's service endpoint — the ONLY merchant locator the agent is given. */
   merchantUrl: string
   maxSpendXrp: number
@@ -32,37 +31,40 @@ export interface AcquireResult {
   mptBalance: string
 }
 
-/** discover -> opt-in -> trust -> swap -> pay -> receive, for one issuance. */
+/** quote (402) -> opt-in -> trust+swap (if IOU) -> pay -> receive, for one issuance. */
 export async function acquireOne(
   deps: AcquireDeps,
   issuance: DiscoveredIssuance,
 ): Promise<AcquireResult> {
-  const { signer, network, payment, log } = deps
-  log.step('acquiring issuance', {
-    issuanceId: issuance.issuanceId,
-    price: issuance.price,
-    currency: issuance.currency,
-  })
+  const { signer, network, log } = deps
+  log.step('acquiring issuance', { issuanceId: issuance.issuanceId })
+
+  // Learn the payment terms (recipient, amount, currency) from the resource's 402.
+  const quote = await quoteResource(issuance.url, log)
 
   // Holder opt-in must precede payment so the issuer can authorize this holder.
   await optInToMpt(signer, network, issuance.issuanceId, log)
-  // Trust + acquire the payment currency.
-  await ensurePaymentTrustline(signer, network, payment, log)
-  await ensurePaymentCurrency(
-    signer,
-    network,
-    payment,
-    { requiredValue: issuance.price, maxSpendXrp: deps.maxSpendXrp, slippageBps: deps.slippageBps },
-    log,
-  )
+
+  // Trust + acquire the payment currency the 402 actually asked for.
+  if (quote.currency.kind === 'IOU') {
+    await ensureIouTrustline(signer, network, quote.currency, log)
+    await ensureIouBalance(
+      signer,
+      network,
+      quote.currency,
+      { requiredValue: quote.amount, maxSpendXrp: deps.maxSpendXrp, slippageBps: deps.slippageBps },
+      log,
+    )
+  }
 
   // Pay through MPP (push mode, OWS-signed) and take delivery.
-  const outcome = await payViaMpp(signer, network, issuance.url, log)
+  const outcome = await payViaMpp(signer, network, issuance.url, deps.maxSpendXrp, log)
 
   const balance = await confirmDelivery(deps, issuance.issuanceId)
+  const paidLabel = quote.currency.kind === 'IOU' ? currencyLabel(quote.currency.currency) : 'XRP'
   deps.summary.add(
     `Acquired ${issuance.issuanceId}`,
-    `${balance} base units, paid ${issuance.price} ${issuance.currency}`,
+    `${balance} base units, paid ${quote.amount} ${paidLabel}`,
   )
   return { issuanceId: issuance.issuanceId, paymentHash: outcome.paymentHash, mptBalance: balance }
 }

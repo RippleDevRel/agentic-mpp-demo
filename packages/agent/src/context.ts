@@ -1,4 +1,11 @@
-import { createLogger, getEnv, getEnvNumber, RunSummary, resolveConfig } from '@rwa/shared'
+import {
+  createLogger,
+  getEnv,
+  getEnvNumber,
+  loadEnv,
+  RunSummary,
+  resolveNetwork,
+} from '@rwa/shared'
 import type { AcquireDeps } from './pipeline'
 import type { AgentStore } from './state'
 import { ensureAgentWallet } from './tools/wallet'
@@ -17,7 +24,10 @@ export interface AgentContext {
  * recipient from each resource's 402 challenge.
  */
 export async function buildAgentContext(): Promise<AgentContext> {
-  const { network, payment } = resolveConfig()
+  // The agent resolves only the network. It deliberately does NOT resolve a
+  // payment currency — it learns currency + issuer from each resource's 402.
+  loadEnv()
+  const network = resolveNetwork()
   const log = createLogger('agent')
   const summary = new RunSummary()
 
@@ -29,7 +39,6 @@ export async function buildAgentContext(): Promise<AgentContext> {
   const deps: AcquireDeps = {
     signer,
     network,
-    payment,
     merchantUrl,
     maxSpendXrp: getEnvNumber('MAX_SPEND', 50),
     slippageBps: getEnvNumber('SWAP_SLIPPAGE_BPS', 100),
