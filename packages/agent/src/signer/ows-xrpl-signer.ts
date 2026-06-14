@@ -61,9 +61,22 @@ export class OwsXrplSigner {
   private readonly o: OwsXrplSignerOptions
   private cachedAddress?: string
   private cachedPubKey?: string
+  /** Serializes OWS signing: the native signer + per-account sequence are not
+   * safe under concurrent calls (a model may invoke signing tools in parallel),
+   * so all signing/submitting runs one at a time. */
+  private queue: Promise<unknown> = Promise.resolve()
 
   constructor(options: OwsXrplSignerOptions) {
     this.o = options
+  }
+
+  private runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const result = this.queue.then(fn, fn)
+    this.queue = result.then(
+      () => undefined,
+      () => undefined,
+    )
+    return result
   }
 
   /** The agent's XRPL classic address (from the OWS vault). */
@@ -115,37 +128,41 @@ export class OwsXrplSigner {
     tx: Partial<SubmittableTransaction> & { TransactionType: string },
     opts: { label?: string } = {},
   ): Promise<SubmitResult> {
-    const address = this.address()
-    const pubKey = this.publicKey()
     const label = opts.label ?? tx.TransactionType
+    // Serialize: even if the model invokes signing tools concurrently, OWS signing
+    // and the account sequence are handled one tx at a time.
+    return this.runExclusive(async () => {
+      const address = this.address()
+      const pubKey = this.publicKey()
 
-    return withClient(this.o.network.rpcUrl, async (client: Client) => {
-      const prepared = (await client.autofill({
-        Account: address,
-        ...tx,
-        SigningPubKey: pubKey,
-      } as never)) as Record<string, unknown>
-      delete prepared.TxnSignature
-      delete prepared.NetworkID
+      return withClient(this.o.network.rpcUrl, async (client: Client) => {
+        const prepared = (await client.autofill({
+          Account: address,
+          ...tx,
+          SigningPubKey: pubKey,
+        } as never)) as Record<string, unknown>
+        delete prepared.TxnSignature
+        delete prepared.NetworkID
 
-      const txHex = encode(prepared as never)
-      this.o.log.step(`signing via OWS (key isolated): ${label}`)
-      const { txHash } = signAndSend(
-        this.o.walletName,
-        'xrpl',
-        txHex,
-        this.o.credential,
-        0,
-        this.o.network.httpRpcUrl,
-        this.o.vaultPath ?? undefined,
-      )
+        const txHex = encode(prepared as never)
+        this.o.log.step(`signing via OWS (key isolated): ${label}`)
+        const { txHash } = signAndSend(
+          this.o.walletName,
+          'xrpl',
+          txHex,
+          this.o.credential,
+          0,
+          this.o.network.httpRpcUrl,
+          this.o.vaultPath ?? undefined,
+        )
 
-      const result = await this.waitValidated(client, txHash)
-      this.o.log.txn(label, txHash, this.o.network.explorerTx?.(txHash))
-      if (result.engineResult !== 'tesSUCCESS') {
-        throw new Error(`${label} failed on-chain: ${result.engineResult} (${txHash})`)
-      }
-      return result
+        const result = await this.waitValidated(client, txHash)
+        this.o.log.txn(label, txHash, this.o.network.explorerTx?.(txHash))
+        if (result.engineResult !== 'tesSUCCESS') {
+          throw new Error(`${label} failed on-chain: ${result.engineResult} (${txHash})`)
+        }
+        return result
+      })
     })
   }
 

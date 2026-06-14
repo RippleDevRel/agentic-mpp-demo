@@ -193,6 +193,25 @@ offer-crossing engine consults AMM liquidity, no path-finding needed; quote/slip
 - Root package now depends on the workspace packages + `xrpl` so `scripts/`
   (Phase 5 demo/orchestration) can import them.
 
+## Bug fixed — OWS signing must be serialized (concurrent model tool calls)
+Symptom: a model-driven run failed with `secp256k1 error: InvalidSecretKey` on the
+opt-in/TrustSet, while sequential runs (pipeline, verify-signer, demo) always worked.
+Root cause: the Claude model invoked `opt_in_mpt` and `ensure_trustline` **in parallel**,
+so two OWS sign operations (and two `autofill` sequence reads) raced in-process — the
+native OWS signer/vault is not concurrency-safe. Fix: `OwsXrplSigner` now has a
+promise-chain mutex (`runExclusive`) so all signing/submitting runs one tx at a time,
+regardless of how the model schedules tool calls. Re-validated live: the model again
+parallelized opt-in + TrustSet; both serialized and succeeded, 0 InvalidSecretKey, full
+acquisition completed.
+
+## Note — the OWS policy uses `xrpl:mainnet` on purpose (not a mainnet risk)
+OWS has a single XRPL signing chain id, `xrpl:mainnet` (the alias `xrpl` resolves to it);
+XRPL keys/addresses are network-agnostic. testnet vs mainnet is decided solely by the
+**RPC endpoint** we submit to (the agent only ever uses the testnet RPC from config).
+So the policy allowlist must be `xrpl:mainnet` to permit signing — using `xrpl:testnet`
+would make every sign call mismatch and be **denied**. The key never touches mainnet
+because no mainnet RPC is ever used; network is bounded by `NETWORK=testnet`, not the policy.
+
 ## Design correction — agent gets the endpoint, not the merchant address (x402 model)
 The agent must not be handed the merchant's XRPL address. Its only input is the seller's
 **service endpoint** (`MERCHANT_URL`, in the goal). It reads the endpoint's catalog (the
