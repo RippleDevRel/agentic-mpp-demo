@@ -28,6 +28,23 @@ export async function getXrpBalanceDrops(client: Client, address: string): Promi
   }
 }
 
+/**
+ * Format a number as an XRPL IOU `value` string. XRPL IOU amounts allow at most
+ * 15 significant digits; a raw float subtraction like `11 - 9.7963116174` yields
+ * `1.2036883825999993` (17 digits) which the ledger rejects with temBAD_AMOUNT
+ * ("Decimal precision out of range"). This trims to 15 significant digits.
+ */
+export function toIouValue(value: number | string): string {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n) || n < 0) throw new Error(`invalid IOU value: ${value}`)
+  if (n === 0) return '0'
+  const s = Number(n.toPrecision(15)).toString()
+  if (s.includes('e') || s.includes('E')) {
+    throw new Error(`IOU value out of representable range: ${value}`)
+  }
+  return s
+}
+
 /** List MPT holdings for an account via `account_objects` (type mptoken). */
 export async function listMptHoldings(
   client: Client,
