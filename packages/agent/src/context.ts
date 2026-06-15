@@ -1,3 +1,9 @@
+/**
+ * Agent bootstrap. The single setup entry (`buildAgentContext`): load env,
+ * resolve the network, ensure the OWS wallet/policy/token, and assemble the
+ * shared `deps` bundle + goal consumed by both the model loop (loop.ts) and the
+ * deterministic pipeline (pipeline.ts).
+ */
 import {
   createLogger,
   getEnv,

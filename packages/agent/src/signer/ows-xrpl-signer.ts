@@ -1,3 +1,10 @@
+/**
+ * OWS signing bridge for XRPL — every agent write goes through here. OWS does
+ * not expose the account public key and its signer assumes `SigningPubKey` is
+ * already present, so this recovers the pubkey (ECDSA recovery), autofills/encodes
+ * the tx, and hands it to OWS `signAndSend`; the private key never leaves the vault.
+ * See the OwsXrplSigner class doc for the step-by-step.
+ */
 import { createHash } from 'node:crypto'
 import { secp256k1 } from '@noble/curves/secp256k1'
 import { getWallet, signAndSend, signHash } from '@open-wallet-standard/core'

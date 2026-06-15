@@ -1,3 +1,9 @@
+/**
+ * Deterministic acquisition (no model in the loop): for every available issuance,
+ * quote (402) -> opt-in -> trust + swap (if IOU) -> pay via MPP -> confirm receipt.
+ * Defines `AcquireDeps`, the shared dependency bundle. The rails tools wrap these
+ * same functions; this path is the keyless / CI fallback.
+ */
 import {
   currencyLabel,
   type Logger,

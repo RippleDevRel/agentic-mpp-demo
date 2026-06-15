@@ -1,3 +1,9 @@
+/**
+ * Persisted agent wallet capability, stored under `.data/` (gitignored). Holds
+ * the OWS API token (a policy-bound capability, NOT the private key), the
+ * address / policy id, the per-tx spend cap, and the acquired-issuance set.
+ * Load/save helpers below.
+ */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import type { NetworkName } from '@rwa/shared'

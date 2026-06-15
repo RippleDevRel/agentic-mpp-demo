@@ -1,3 +1,8 @@
+/**
+ * Funding tool: size the XRP the agent must hold (base reserve + owner reserves
+ * for the trust line / MPT + swap budget + fee buffer) and top up from the
+ * scriptable testnet faucet by destination address (no seed needed).
+ */
 import { getXrpBalanceDrops, type Logger, type NetworkConfig, withClient } from '@rwa/shared'
 import { BASE_RESERVE_DROPS, fromDrops, OWNER_RESERVE_DROPS, toDrops } from 'xrpl-mpp-sdk'
 

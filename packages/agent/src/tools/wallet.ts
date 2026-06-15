@@ -1,3 +1,9 @@
+/**
+ * OWS wallet provisioning: create (or reuse) the vault wallet whose key is
+ * generated inside OWS, bind it with a policy (XRPL-only, expiry, executable
+ * spend cap), and mint the policy-enforced API token the agent signs with.
+ * Returns an OwsXrplSigner plus the persisted store.
+ */
 import { chmodSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import {

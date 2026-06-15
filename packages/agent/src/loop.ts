@@ -1,3 +1,9 @@
+/**
+ * Rails agent. Wraps the acquisition steps as high-level model tools (`tool()`),
+ * hands the model a recipe via the system prompt, and runs the Claude Agent SDK
+ * loop. The "how" of each on-chain action lives in tools/*; the model only
+ * orchestrates. See minimal.ts (generic primitives) and pipeline.ts (no model).
+ */
 import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
 import { getEnv, getEnvNumber, listMptHoldings, withClient } from '@rwa/shared'
 import { z } from 'zod'

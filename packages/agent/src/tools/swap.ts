@@ -1,3 +1,9 @@
+/**
+ * Swap tool: acquire the payment IOU by swapping XRP on-chain. Preflights the
+ * order book (AMM-aware) to size `TakerGets` from the live quote + slippage, then
+ * submits an Immediate-Or-Cancel `OfferCreate` via OWS. The XRP spend cap is
+ * enforced by the OWS policy at signing, not here.
+ */
 import { currencyLabel, type Logger, type NetworkConfig, withClient } from '@rwa/shared'
 import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
 import type { IouCurrency } from './trustline'

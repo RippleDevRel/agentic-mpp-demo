@@ -1,3 +1,8 @@
+/**
+ * Trust + opt-in tools: set an IOU trust line (`TrustSet`) so the agent can hold
+ * the payment currency, and opt into a permissioned RWA MPT (holder-side
+ * `MPTokenAuthorize`) so the issuer can authorize this holder. Both OWS-signed.
+ */
 import {
   currencyLabel,
   type Logger,
