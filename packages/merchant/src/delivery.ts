@@ -25,7 +25,7 @@ async function payerFromTx(rpcUrl: string, txHash: string): Promise<string> {
 /**
  * Deliver the RWA MPT after a paid 402. The permissioned issuance requires the
  * issuer to authorize the specific holder first (the holder must already have
- * opted in — Phase 3.4), then the issuer sends the MPT with an on-chain Payment.
+ * opted in), then the issuer sends the MPT with an on-chain Payment.
  * Idempotent on the payment reference: a retried delivery never double-issues.
  */
 export async function deliver(

@@ -54,8 +54,6 @@ export interface SubmitResult {
  * secp256k1 public key from a `signHash` signature (matching the OWS address),
  * set it as `SigningPubKey`, then hand the encoded tx to OWS `signAndSend` —
  * which injects `TxnSignature` and broadcasts over HTTP JSON-RPC.
- *
- * See FINDINGS.md "Phase 2.3 RESOLVED".
  */
 export class OwsXrplSigner {
   private readonly o: OwsXrplSignerOptions

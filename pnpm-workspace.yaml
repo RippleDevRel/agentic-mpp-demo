@@ -16,8 +16,8 @@ minimumReleaseAgeExclude:
   - '@anthropic-ai/claude-agent-sdk-win32-x64@0.3.177'
   - '@anthropic-ai/claude-agent-sdk@0.3.177'
 
-# xrpl-mpp-sdk is not yet on npm (see FINDINGS.md). Redirect the bare specifier to
-# the locally built tarball. Going live on npm = delete this overrides block.
+# xrpl-mpp-sdk is not yet on npm. Redirect the bare specifier to the locally built
+# tarball (regenerate with `pnpm sdk:vendor`). Going live on npm = delete this block.
 # (pnpm 11 reads overrides here, not from package.json.)
 overrides:
   xrpl-mpp-sdk: 'file:./vendor/xrpl-mpp-sdk-0.1.0.tgz'

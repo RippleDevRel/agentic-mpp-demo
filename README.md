@@ -57,7 +57,7 @@ the secp256k1 public key from a signature (ECDSA recovery, matching the OWS addr
 and lets OWS `signAndSend` inject the signature and broadcast. The MPP payment is done
 in **push mode**: OWS signs+submits the on-chain Payment, then the tx hash is handed to
 the SDK-powered merchant via an mppx credential — so the key stays in OWS while the
-merchant still verifies the payment. See `FINDINGS.md` for the full integration story.
+merchant still verifies the payment.
 
 ### Guardrails (enforced by OWS, in both modes)
 
@@ -70,7 +70,7 @@ transaction signed:
   (`packages/agent/policy/max-spend.mjs`) that decodes the tx and denies on overflow.
 
 `MAX_SPEND` is also checked in-app on the rails swap; in minimal mode the OWS cap is the
-backstop. (OWS has no cumulative/rolling limit yet, so the cap is per-tx — see `FINDINGS.md`.)
+backstop. (OWS has no cumulative/rolling limit yet, so the cap is per-transaction.)
 
 ## Workspace layout
 
@@ -135,8 +135,8 @@ Both read `ANTHROPIC_API_KEY`, `OWS_PASSPHRASE`, and `MERCHANT_URL` from `.env`.
 ### What's irreducible either way
 
 Two pieces have no generic/CLI equivalent and exist in both modes:
-1. **The OWS signing bridge** (`signer/ows-xrpl-signer.ts`) — recover the pubkey, sign via
-   OWS `signAndSend`. (See `FINDINGS.md` / `UPSTREAM_FRICTION.md`.)
+1. **The OWS signing bridge** (`packages/agent/src/signer/ows-xrpl-signer.ts`) — recover
+   the pubkey, sign via OWS `signAndSend`.
 2. **The MPP credential glue** (`Challenge.fromResponse` + `Credential.serialize`) — the
    402/credential envelope can't be reconstructed from raw HTTP.
 
@@ -181,7 +181,7 @@ in code; OWS catches the *dangerous* (out-of-policy) either way — not the *inc
 1. **Signer integration is the central task.** Resolved by recovering the OWS public
    key and signing through OWS (`signAndSend`); the MPP leg uses push mode. The clean
    upstream fix is an external-signer constructor on the SDK `Wallet`
-   (`Wallet.fromSigner`) — recorded in `FINDINGS.md`.
+   (`Wallet.fromSigner`).
 2. **RLUSD funding on testnet** is not scriptable, so the agent self-funds in XRP and
    swaps to RLUSD on the existing testnet AMM (no operator liquidity setup).
 3. **RLUSD identifiers** come from the SDK `RLUSD_TESTNET` constant (40-char hex

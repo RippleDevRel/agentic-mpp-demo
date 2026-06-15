@@ -1,9 +1,9 @@
 /**
  * Regenerate the local xrpl-mpp-sdk tarball that `pnpm.overrides` points at.
  *
- * The SDK is not yet published to npm (see FINDINGS.md). This script clones it at
- * a pinned commit, builds it, and `npm pack`s it into `vendor/`. CI runs the same
- * steps before `pnpm install`. Going live on npm = drop the override in package.json.
+ * The SDK is not yet published to npm. This script clones it at a pinned commit,
+ * builds it, and `npm pack`s it into `vendor/`. CI runs the same steps before
+ * `pnpm install`. Going live on npm = drop the override in pnpm-workspace.yaml.
  *
  * Usage: pnpm sdk:vendor  (or: tsx scripts/vendor-sdk.ts)
  */

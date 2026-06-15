@@ -2,7 +2,7 @@ import { getEnvNumber, rwaMetadata } from '@rwa/shared'
 import type { MerchantContext } from './context'
 
 /**
- * Optional ongoing release loop (plan 1.1). Beyond the launch inventory, this
+ * Optional ongoing release loop. Beyond the launch inventory, this
  * periodically creates a NEW permissioned issuance (tfMPTRequireAuth) so the
  * agent's watch-and-buy behaviour can be exercised. Disabled when
  * ISSUANCE_INTERVAL_MS <= 0. Returns a stop function.

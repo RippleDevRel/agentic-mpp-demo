@@ -47,7 +47,7 @@ export function createLogger(scope: string): Logger {
   }
 }
 
-/** Accumulates milestones for a clean end-of-run summary (Phase 4.4). */
+/** Accumulates milestones for a clean end-of-run summary. */
 export class RunSummary {
   private readonly lines: string[] = []
 

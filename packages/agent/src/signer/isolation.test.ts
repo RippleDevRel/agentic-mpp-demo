@@ -16,7 +16,7 @@ function allSourceFiles(dir: string): string[] {
   return out
 }
 
-describe('OWS key isolation (Phase 2 DoD)', () => {
+describe('OWS key isolation', () => {
   it('the agent never extracts key material from OWS', () => {
     // exportWallet / importWalletPrivateKey would move the private key out of the
     // vault; the seed-derived SDK Wallet path would read a seed into the process.

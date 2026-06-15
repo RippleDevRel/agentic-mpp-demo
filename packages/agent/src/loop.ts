@@ -17,7 +17,7 @@ const ok = (data: unknown): ToolResult => ({
 
 const SERVER = 'rwa'
 
-/** Expose the Phase 2/3 functions as agent tools (strict zod schemas). */
+/** Expose the acquisition functions as agent tools (strict zod schemas). */
 function buildTools(deps: AcquireDeps, store: AgentStore) {
   const acquired = new Set(store.acquired)
 
@@ -197,7 +197,7 @@ currency, issuer, and amount. Prefer doing the setup actions yourself via the to
 
 /**
  * Run the autonomous acquisition driven by a Claude model (Claude Agent SDK).
- * Tools are the Phase 2/3 functions; the only runtime instruction is the goal.
+ * Tools are the acquisition functions; the only runtime instruction is the goal.
  * Requires ANTHROPIC_API_KEY in the environment.
  */
 export async function runAgentLoop(
