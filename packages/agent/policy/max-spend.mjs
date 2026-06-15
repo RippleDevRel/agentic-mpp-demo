@@ -8,7 +8,7 @@
  * non-zero exit or {"allow":false} blocks the signature — so this cap is enforced
  * at the signing boundary, not just in the agent process.
  *
- * Cap is PER TRANSACTION (OWS does not yet track cumulative spend — see FINDINGS).
+ * Cap is PER TRANSACTION (OWS does not yet track cumulative/rolling spend).
  * Money only moves via a decodable XRPL tx; hash signs (pubkey recovery) and
  * non-XRP-outflow txs (TrustSet, MPTokenAuthorize, IOU payments) are allowed.
  */
