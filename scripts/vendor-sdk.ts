@@ -8,7 +8,7 @@
  * Usage: pnpm sdk:vendor  (or: tsx scripts/vendor-sdk.ts)
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -41,6 +41,8 @@ function main(): void {
   try {
     run('pnpm', ['install'], sdkDir)
     run('pnpm', ['build'], sdkDir)
+    // npm pack does not create the destination; on a fresh checkout vendor/ is absent.
+    mkdirSync(VENDOR_DIR, { recursive: true })
     run('npm', ['pack', '--pack-destination', VENDOR_DIR], sdkDir)
     console.log(`\nTarball written to ${VENDOR_DIR}/xrpl-mpp-sdk-0.1.0.tgz`)
   } finally {
