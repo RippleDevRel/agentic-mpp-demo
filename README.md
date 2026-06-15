@@ -92,6 +92,57 @@ OWS_PASSPHRASE=... MERCHANT_URL=http://localhost:8787 \
   ANTHROPIC_API_KEY=... pnpm --filter @rwa/agent start
 ```
 
+## Two agent modes: "rails" vs "minimal"
+
+The same goal, the same OWS-custodied wallet and policy, but two ends of the
+**autonomy ⇄ reliability** spectrum. Both keep the key in OWS and are bounded by the
+same OWS policy (XRPL-only, expiry, per-tx MAX_SPEND cap).
+
+```bash
+pnpm agent           # rails  — high-level domain tools
+pnpm agent:minimal   # minimal — generic primitives, the model builds the txs itself
+```
+
+- **Rails** (`packages/agent/src/loop.ts`) exposes **9 domain verbs**
+  (`discover_issuances`, `quote_resource`, `opt_in_mpt`, `ensure_trustline`,
+  `swap_for_currency`, `pay_via_mpp`, `confirm_receipt`, …). The *how* of each on-chain
+  action — tx construction, AMM quoting, reserve sizing, idempotency, wait-for-validation
+  — lives in code. The model only orchestrates: it decides the sequence, wires the 402
+  data through, loops, and stops.
+
+- **Minimal** (`packages/agent/src/minimal.ts`) exposes only **generic primitives** —
+  `xrpl_query` (read), `xrpl_sign_submit` (sign any tx via OWS), `faucet`, `http_get`,
+  `mpp_quote`, `mpp_settle`. There is **no** bespoke opt-in/trustline/swap/discovery code:
+  the model reads the ledger, builds the XRPL transactions itself (as JSON), works out the
+  ordering, and self-corrects from errors. OWS is the only hard guardrail.
+
+### What's irreducible either way
+
+Two pieces have no generic/CLI equivalent and exist in both modes:
+1. **The OWS signing bridge** (`signer/ows-xrpl-signer.ts`) — recover the pubkey, sign via
+   OWS `signAndSend`. (See `FINDINGS.md` / `UPSTREAM_FRICTION.md`.)
+2. **The MPP credential glue** (`Challenge.fromResponse` + `Credential.serialize`) — the
+   402/credential envelope can't be reconstructed from raw HTTP.
+
+### The tradeoff (measured on testnet, model-driven)
+
+| | Rails | Minimal |
+| --- | --- | --- |
+| Tools exposed | 9 domain verbs | 6 generic primitives |
+| Who builds the transactions | the code | **the model** (JSON) |
+| Discovers the flow | recipe in the prompt | the model derives + adapts |
+| Reliability | deterministic, first try | works, but **stumbles then self-corrects** |
+| Tool calls for one purchase | ~11 | ~26 (more reads, retries, reasoning) |
+| Guardrails | OWS policy + in-code checks | **OWS policy only** |
+| Observed | clean acquisition | self-fixed a `book_offers` query, acquired multiple issuances end-to-end, **0 OWS denials** |
+
+Both were validated live on testnet. The minimal agent genuinely "figures it out" — but it
+costs more model turns and demands very robust primitives (e.g. transactions are passed as
+JSON strings, and tools return clear errors the model can read and recover from). The rails
+agent trades that autonomy for determinism, lower cost, and testability. Pick by how much
+you trust the model to assemble protocol-correct transactions vs. how much you want pinned
+in code; OWS catches the *dangerous* (out-of-policy) either way — not the *incorrect*.
+
 ## Environment reference (`.env.example`)
 
 | Variable | Purpose |

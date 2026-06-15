@@ -16,6 +16,7 @@
     "test": "vitest run --passWithNoTests",
     "merchant": "tsx packages/merchant/src/server.ts",
     "agent": "tsx packages/agent/src/index.ts",
+    "agent:minimal": "tsx packages/agent/src/minimal.ts",
     "check:testnet": "tsx scripts/check-testnet.ts",
     "demo": "tsx scripts/demo.ts",
     "sdk:vendor": "tsx scripts/vendor-sdk.ts"

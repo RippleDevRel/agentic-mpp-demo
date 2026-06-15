@@ -250,6 +250,23 @@ for XRPL IOU/MPT the executable must decode the raw tx (value is only populated 
 XRP). Today MAX_SPEND is enforced in-app (the swap caps XRP) + token scope via the agent's
 tools; moving them to an executable policy would add defense-in-depth at the signing boundary.
 
+## Minimal agent (`agent:minimal`) — autonomy vs reliability, measured
+Added a second entrypoint giving the model only generic primitives (`xrpl_query`,
+`xrpl_sign_submit`, `faucet`, `http_get`, `mpp_quote`, `mpp_settle`) — no bespoke
+opt-in/trustline/swap/discovery code; the model builds every XRPL tx itself. Same OWS
+wallet + policy as rails.
+- **Tool-shape lesson:** passing the tx via `z.any()` lost `TransactionType` (the SDK
+  object-validates and strips unknown keys when the model flattens the args) → 5 failed
+  signs. Fix: pass the tx as a **JSON string** (`txJson`) and reads' params as
+  `paramsJson`; tools return **clear error strings** the model can read and recover from.
+- **Verified live (testnet, model-driven):** the model discovered the issuances, learned
+  the RLUSD issuer from a quote, **self-corrected a `book_offers` query format error**, and
+  acquired multiple issuances end-to-end — 1 TrustSet, 6 MPTokenAuthorize, 3 OfferCreate,
+  3 Payment, **0 OWS denials**, key never left OWS. Cost ~26 tool calls (vs ~11 rails).
+- **Takeaway:** less code ⇒ more autonomy but more fragile + costlier; it demands very
+  robust primitives + good error messages. OWS catches the dangerous (out-of-policy), not
+  the incorrect. README "Two agent modes" documents the tradeoff.
+
 ## Design correction — agent gets the endpoint, not the merchant address (x402 model)
 The agent must not be handed the merchant's XRPL address. Its only input is the seller's
 **service endpoint** (`MERCHANT_URL`, in the goal). It reads the endpoint's catalog (the
