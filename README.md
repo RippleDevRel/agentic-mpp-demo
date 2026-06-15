@@ -72,6 +72,101 @@ transaction signed:
 `MAX_SPEND` is also checked in-app on the rails swap; in minimal mode the OWS cap is the
 backstop. (OWS has no cumulative/rolling limit yet, so the cap is per-transaction.)
 
+## How OWS works (key storage, policy, signing)
+
+This section is the developer-level detail behind the two subsections above: where the
+key lives, what the agent can actually touch, and how signing is brokered.
+
+### The vault on disk
+
+OWS stores everything under a vault directory (`OWS_VAULT_PATH`, default `~/.ows`),
+created with `700` permissions, in three folders:
+
+```
+<vault>/
+  wallets/<wallet-id>.json    # the encrypted key material
+  keys/<key-id>.json          # policy-bound API tokens
+  policies/<policy-id>.json   # the rules a token is evaluated against
+```
+
+### Key storage — the private key is never at rest in cleartext
+
+The wallet is a BIP39 **mnemonic** (`key_type: "mnemonic"`) derived into one account per
+chain via BIP44 paths; the XRPL account is `m/44'/144'/0'/0/0`. The mnemonic is sealed in
+the wallet file's `crypto` block and is never written in cleartext:
+
+- **KDF**: `scrypt` (`n=65536, r=8, p=1`) stretches the **owner passphrase**
+  (`OWS_PASSPHRASE`) + a per-wallet salt into a 256-bit key.
+- **Cipher**: `aes-256-gcm` (with `iv` + `auth_tag`) encrypts the mnemonic. GCM is
+  *authenticated* — any tampering with the ciphertext is detected on decrypt.
+
+Without the owner passphrase, the ciphertext is inert.
+
+### API tokens — how the agent signs without the passphrase
+
+The agent never receives the owner passphrase. It is handed a **policy-bound API token**
+minted by `createApiKey(...)`. In `keys/<id>.json`:
+
+- the raw token is not stored, only its `token_hash` (SHA-256);
+- `wallet_secrets` holds a copy of the key **re-encrypted with a key derived from the
+  token** (`hkdf-sha256`, info `ows-api-key-v1`). That is what lets the token unlock its
+  own copy of the key to sign — no passphrase needed;
+- the token carries its scopes: `wallet_ids`, `policy_ids`, and `expires_at`.
+
+So the token is a narrow, revocable, time-bounded capability — not the key, and not the
+passphrase.
+
+### Policy configuration
+
+A policy (`policies/<id>.json`) combines two layers, with `action: "deny"` as the
+default:
+
+- **Declarative rules** — here `allowed_chains` (`xrpl:mainnet` only) and `expires_at`
+  (the token's right to sign lapses after 30 days).
+- **An executable policy** — `executable` points at an external program
+  (`packages/agent/policy/max-spend.mjs`). On *every* signing request OWS pipes a
+  `PolicyContext` JSON to its stdin (the decoded tx, the policy `config`, …) and reads
+  `{ allow, reason }` from stdout. Ours decodes the tx, sums the XRP outflow, and denies
+  when it exceeds `config.maxSpendXrp`.
+
+The policy binds **because the agent signs with the token** (which references
+`policy_ids`), not with the passphrase. That is the "enforced at the signing boundary"
+guarantee: even a model-driven agent cannot get an out-of-policy transaction signed.
+`ensureAgentWallet` (`packages/agent/src/tools/wallet.ts`) wires this up: create wallet →
+create policy → mint token → sign with the token.
+
+> `chain_ids` uses `xrpl:mainnet` even on testnet: OWS's XRPL chain id is
+> network-agnostic (XRPL addresses are the same across networks). Testnet vs mainnet is
+> decided by the RPC URL, not by OWS.
+
+### The `SigningPubKey` recovery (the one real integration wrinkle)
+
+A signed XRPL transaction must carry `SigningPubKey` (the signer's public key) alongside
+`TxnSignature`; rippled checks the signature against that key and the key against the
+`Account`. Two OWS ergonomics collide here: OWS does **not** expose the public key, and
+its `signAndSend` expects `SigningPubKey` to already be present (it only injects
+`TxnSignature` and broadcasts). The fix in `packages/agent/src/signer/ows-xrpl-signer.ts`:
+
+1. ask OWS to `signHash` a known hash (this does not export the key);
+2. recover the secp256k1 public key from that signature via ECDSA recovery — try both
+   recovery bits and keep the candidate whose derived XRPL address matches the OWS
+   account;
+3. set it as `SigningPubKey`, autofill, encode, then hand the blob to `signAndSend`.
+
+The pubkey is cached, `NetworkID` is stripped (networks with id ≤ 1024 must omit it), and
+all signing is serialized through a mutex (the account sequence is not concurrency-safe).
+The clean upstream fix would be an external-signer constructor on the SDK `Wallet`
+(`Wallet.fromSigner`).
+
+### What the agent can and cannot access
+
+| The agent has | The agent never has |
+| --- | --- |
+| the merchant **endpoint URL** + its own API key | the merchant's ledger address (it learns it from the 402) |
+| a **policy-bound OWS token** (XRPL-only, expiring, spend-capped) | the OWS **owner passphrase** |
+| `signHash` / `signAndSend` brokered signing | the **private key / mnemonic** (it stays encrypted in the vault) |
+| the recovered **public key** + its own XRPL address | any way to export the key (`exportWallet`/seed paths are blocked by a test) |
+
 ## Workspace layout
 
 ```
