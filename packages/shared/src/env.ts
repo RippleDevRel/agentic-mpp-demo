@@ -37,9 +37,3 @@ export function getEnvNumber(key: string, fallback: number): number {
   if (Number.isNaN(n)) throw new Error(`Environment variable ${key} must be a number, got: ${v}`)
   return n
 }
-
-export function getEnvBool(key: string, fallback = false): boolean {
-  const v = getEnv(key)?.toLowerCase()
-  if (v === undefined) return fallback
-  return v === 'true' || v === '1' || v === 'yes'
-}

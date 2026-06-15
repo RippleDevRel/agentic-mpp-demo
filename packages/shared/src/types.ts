@@ -41,15 +41,4 @@ export interface RwaAssetDef {
   pricePerUnit: string
 }
 
-/** Persisted merchant identity + issuance, so restarts reuse the same on-chain state. */
-export interface MerchantState {
-  address: string
-  seed: string
-  issuanceId: string
-  requireAuth: boolean
-  network: NetworkName
-  /** issuance_ids that have been sold (catalog stops offering them). */
-  sold: string[]
-}
-
 export type { IssuedCurrency, MPToken, NetworkId }

@@ -3,7 +3,6 @@ export {
   BASE_RESERVE_DROPS,
   fromDrops,
   OWNER_RESERVE_DROPS,
-  RLUSD_MAINNET,
   RLUSD_TESTNET,
   toDrops,
 } from 'xrpl-mpp-sdk'

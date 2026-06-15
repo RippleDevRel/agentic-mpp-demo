@@ -27,3 +27,6 @@ node_modules/
 
 # Local upstream-friction notes (not committed)
 UPSTREAM_FRICTION.md
+
+# Local dev notes (not committed)
+FINDINGS.md

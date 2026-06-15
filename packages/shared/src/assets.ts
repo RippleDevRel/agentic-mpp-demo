@@ -12,14 +12,6 @@ export function currencyLabel(code: string): string {
   return /^[\x20-\x7e]+$/.test(ascii) && ascii.length > 0 ? ascii : code
 }
 
-/** Pad a currency code to the 40-char hex form when it exceeds 3 ASCII chars. */
-export function toCurrencyHex(code: string): string {
-  if (code.length <= 3) return code
-  if (/^[0-9A-Fa-f]{40}$/.test(code)) return code.toUpperCase()
-  const hex = Buffer.from(code, 'ascii').toString('hex').toUpperCase()
-  return hex.padEnd(40, '0')
-}
-
 /**
  * Resolve the payment currency the merchant charges in, in the exact SDK shape.
  * Imports the RLUSD issuer/currency from the SDK constant so they stay in sync,

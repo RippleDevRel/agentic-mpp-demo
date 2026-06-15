@@ -1,20 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { toCurrencyHex } from './assets'
+import { currencyLabel } from './assets'
 
-describe('toCurrencyHex', () => {
-  it('keeps standard 3-char codes as-is', () => {
-    expect(toCurrencyHex('USD')).toBe('USD')
-    expect(toCurrencyHex('XRP')).toBe('XRP')
+describe('currencyLabel', () => {
+  it('decodes a 40-char hex currency to its ASCII ticker', () => {
+    // RLUSD's 40-char hex code.
+    expect(currencyLabel('524C555344000000000000000000000000000000')).toBe('RLUSD')
   })
 
-  it('encodes >3-char codes to 40-char uppercase hex, right-padded', () => {
-    const hex = toCurrencyHex('RLUSD')
-    expect(hex).toHaveLength(40)
-    expect(hex).toBe('524C555344000000000000000000000000000000')
+  it('passes through a standard 3-char code unchanged', () => {
+    expect(currencyLabel('USD')).toBe('USD')
   })
 
-  it('passes through an already-40-char hex code (uppercased)', () => {
-    const code = '524c555344000000000000000000000000000000'
-    expect(toCurrencyHex(code)).toBe(code.toUpperCase())
+  it('keeps the raw hex when it does not decode to printable ASCII', () => {
+    const nonAscii = '01020300000000000000000000000000000000FF'
+    expect(currencyLabel(nonAscii)).toBe(nonAscii)
   })
 })

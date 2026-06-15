@@ -32,10 +32,7 @@ export interface AcquireResult {
 }
 
 /** quote (402) -> opt-in -> trust+swap (if IOU) -> pay -> receive, for one issuance. */
-export async function acquireOne(
-  deps: AcquireDeps,
-  issuance: DiscoveredIssuance,
-): Promise<AcquireResult> {
+async function acquireOne(deps: AcquireDeps, issuance: DiscoveredIssuance): Promise<AcquireResult> {
   const { signer, network, log } = deps
   log.step('acquiring issuance', { issuanceId: issuance.issuanceId })
 

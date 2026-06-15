@@ -14,22 +14,6 @@ export async function withClient<T>(
   }
 }
 
-/** True if the account is activated (funded above the base reserve) on-ledger. */
-export async function accountExists(client: Client, address: string): Promise<boolean> {
-  try {
-    await client.request({ command: 'account_info', account: address, ledger_index: 'validated' })
-    return true
-  } catch (err) {
-    if (err instanceof Error && /actNotFound/.test(err.message)) return false
-    // Some servers surface actNotFound only in the response error code.
-    if (typeof err === 'object' && err && 'data' in err) {
-      const data = (err as { data?: { error?: string } }).data
-      if (data?.error === 'actNotFound') return false
-    }
-    throw err
-  }
-}
-
 /** XRP balance in drops as a string, `'0'` if the account is not yet activated. */
 export async function getXrpBalanceDrops(client: Client, address: string): Promise<string> {
   try {
