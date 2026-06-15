@@ -18,8 +18,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          # Plan rule: official npm registry only.
+          # pnpm 11.6 (pinned via packageManager) requires Node >= 22.13.
+          node-version: 22
+          # Official npm registry only.
           registry-url: https://registry.npmjs.org/
 
       # xrpl-mpp-sdk is not yet on npm. Clone the pinned commit, build it, and pack
