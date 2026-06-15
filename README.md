@@ -315,8 +315,12 @@ in code; OWS catches the *dangerous* (out-of-policy) either way — not the *inc
    (`Wallet.fromSigner`).
 2. **RLUSD funding on testnet** is not scriptable, so the agent self-funds in XRP and
    swaps to RLUSD on the existing testnet AMM (no operator liquidity setup).
-3. **RLUSD identifiers** come from the SDK `RLUSD_TESTNET` constant (40-char hex
-   currency + issuer), not redefined here.
+3. **RLUSD identifiers — merchant vs agent.** The *merchant* charges in RLUSD using the
+   SDK `RLUSD_TESTNET` constant (40-char hex currency + issuer), kept in sync — an
+   `RLUSD_TESTNET_ISSUER` env that disagrees only logs a warning and is ignored. The
+   *agent* hardcodes nothing: it is currency-agnostic and learns the currency + issuer
+   from each resource's 402 challenge (the SDK constant appears agent-side only in tests
+   and `check-testnet`).
 4. **Account reserves** are sized explicitly (base + owner per trust line / MPT + swap
    + fees) before funding.
 5. **`xrpl-mpp-sdk` is not yet on npm.** It is consumed via a single `pnpm` override
