@@ -41,6 +41,9 @@ export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Pr
   const existing = loadAgentStore(network.name)
   if (existing) {
     log.ows('reusing OWS agent wallet', { address: existing.address })
+    // Backfill for stores written before maxSpendXrp was persisted; the active
+    // enforcement is the policy created earlier, so keep the env value as a hint.
+    existing.maxSpendXrp ??= getEnvNumber('MAX_SPEND', 50)
     const signer = new OwsXrplSigner({
       walletName: existing.walletName,
       credential: existing.token,
@@ -108,6 +111,7 @@ export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Pr
     policyId,
     token: key.token,
     network: network.name,
+    maxSpendXrp,
     acquired: [],
   }
   saveAgentStore(store)

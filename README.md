@@ -69,8 +69,9 @@ transaction signed:
 - **Per-transaction spend cap** of `MAX_SPEND` XRP, via an OWS *executable* policy
   (`packages/agent/policy/max-spend.mjs`) that decodes the tx and denies on overflow.
 
-`MAX_SPEND` is also checked in-app on the rails swap; in minimal mode the OWS cap is the
-backstop. (OWS has no cumulative/rolling limit yet, so the cap is per-transaction.)
+`MAX_SPEND` is enforced **solely by the OWS policy** at signing, in both modes — the app
+never gates spend in code (it only reads the cap to provision funding and to inform the
+model). (OWS has no cumulative/rolling limit yet, so the cap is per-transaction.)
 
 ## How OWS works (key storage, policy, signing)
 
@@ -244,7 +245,7 @@ Two pieces have no generic/CLI equivalent and exist in both modes:
 | Discovers the flow | recipe in the prompt | the model derives + adapts |
 | Reliability | deterministic, first try | works, but **stumbles then self-corrects** |
 | Tool calls for one purchase | ~11 | ~26 (more reads, retries, reasoning) |
-| Guardrails | OWS policy + in-code checks | **OWS policy only** |
+| Guardrails | OWS policy (sole enforcer) | OWS policy (sole enforcer) |
 | Observed | clean acquisition | self-fixed a `book_offers` query, acquired multiple issuances end-to-end, **0 OWS denials** |
 
 Both were validated live on testnet. The minimal agent genuinely "figures it out" — but it
@@ -267,7 +268,7 @@ in code; OWS catches the *dangerous* (out-of-policy) either way — not the *inc
 | `MPP_SECRET_KEY` | mppx server secret (merchant) |
 | `PAYMENT_CURRENCY` | what the merchant charges: `RLUSD` \| `XRP` |
 | `ANTHROPIC_API_KEY`, `AGENT_MODEL` | model loop (default model `sonnet`); omit key → deterministic pipeline |
-| `MAX_SPEND`, `AGENT_MAX_ITERATIONS` | per-tx XRP cap (enforced in-app **and** by the OWS policy) + loop bound |
+| `MAX_SPEND`, `AGENT_MAX_ITERATIONS` | per-tx XRP cap (enforced by the OWS policy at signing) + loop bound |
 | `OWS_WALLET_NAME`, `OWS_PASSPHRASE`, `OWS_VAULT_PATH` | OWS wallet name, owner passphrase, vault dir |
 | `SWAP_SLIPPAGE_BPS` | swap slippage bound |
 

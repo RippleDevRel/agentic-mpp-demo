@@ -22,8 +22,9 @@ const ok = (data: unknown) => ({ content: [{ type: 'text' as const, text: JSON.s
 
 async function main(): Promise<void> {
   console.log(colorLegend())
-  const { deps } = await buildAgentContext()
-  const { signer, network, merchantUrl, maxSpendXrp, log } = deps
+  const { deps, store } = await buildAgentContext()
+  const { signer, network, merchantUrl, log } = deps
+  const maxSpendXrp = store.maxSpendXrp
   const address = signer.address()
 
   const tools = [

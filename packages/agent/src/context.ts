@@ -36,11 +36,12 @@ export async function buildAgentContext(): Promise<AgentContext> {
 
   const merchantUrl = getEnv('MERCHANT_URL') ?? 'http://localhost:8787'
 
+  // MAX_SPEND is NOT carried in deps: it is enforced solely by the OWS policy and
+  // persisted on the store (read for provisioning / reporting, never to gate a tx).
   const deps: AcquireDeps = {
     signer,
     network,
     merchantUrl,
-    maxSpendXrp: getEnvNumber('MAX_SPEND', 50),
     slippageBps: getEnvNumber('SWAP_SLIPPAGE_BPS', 100),
     log,
     summary,

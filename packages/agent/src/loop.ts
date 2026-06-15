@@ -33,7 +33,7 @@ function buildTools(deps: AcquireDeps, store: AgentStore) {
         address: deps.signer.address(),
         holdings,
         acquired: [...acquired],
-        maxSpendXrp: deps.maxSpendXrp,
+        maxSpendXrp: store.maxSpendXrp,
       })
     },
   )
@@ -46,7 +46,7 @@ function buildTools(deps: AcquireDeps, store: AgentStore) {
       const r = await ensureFunded(
         deps.signer.address(),
         deps.network,
-        { ownerObjects: 2, swapBudgetXrp: String(deps.maxSpendXrp) },
+        { ownerObjects: 2, swapBudgetXrp: String(store.maxSpendXrp) },
         deps.log,
       )
       return ok(r)
@@ -112,7 +112,7 @@ function buildTools(deps: AcquireDeps, store: AgentStore) {
         deps.signer,
         deps.network,
         { currency, issuer },
-        { requiredValue, maxSpendXrp: deps.maxSpendXrp, slippageBps: deps.slippageBps },
+        { requiredValue, slippageBps: deps.slippageBps },
         deps.log,
       )
       return ok({ acquired: { currency, issuer }, requiredValue })
@@ -124,7 +124,7 @@ function buildTools(deps: AcquireDeps, store: AgentStore) {
     'Pay an MPP-protected resource URL (push mode, signed via OWS) and take delivery. Returns the payment tx hash.',
     { url: z.string() },
     async ({ url }) => {
-      const outcome = await payViaMpp(deps.signer, deps.network, url, deps.maxSpendXrp, deps.log)
+      const outcome = await payViaMpp(deps.signer, deps.network, url, deps.log)
       return ok({ paymentHash: outcome.paymentHash, delivered: outcome.delivered })
     },
   )
@@ -172,8 +172,9 @@ every transaction is signed there. Use ONLY the provided tools — do not attemp
 other action.
 
 Hard safety bounds (never violate):
-- Never cause spending beyond MAX_SPEND (reported by get_status). The swap tool enforces
-  this, but do not retry swaps in a way that would exceed it.
+- Never cause spending beyond MAX_SPEND (reported by get_status). The OWS policy enforces
+  this at signing — a transaction over the cap is rejected — so do not retry swaps or
+  payments in a way that would exceed it.
 - Operate only on the XRP Ledger via the given tools.
 - Stop once every currently-available issuance from the merchant has been acquired.
 

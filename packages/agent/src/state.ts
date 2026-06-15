@@ -15,6 +15,13 @@ export interface AgentStore {
   /** ows_key_... agent token used for policy-enforced signing. */
   token: string
   network: NetworkName
+  /**
+   * Per-transaction XRP spend cap baked into the OWS policy. The OWS executable
+   * policy is the sole *enforcer*; this copy is read only for provisioning
+   * (faucet funding) and to report the cap to the model — never to gate a
+   * payment in app code.
+   */
+  maxSpendXrp: number
   /** issuance_ids the agent has already acquired (dedup). */
   acquired: string[]
 }

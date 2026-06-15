@@ -1,4 +1,4 @@
-import { currencyLabel, type Logger, type NetworkConfig, toDrops, withClient } from '@rwa/shared'
+import { currencyLabel, type Logger, type NetworkConfig, withClient } from '@rwa/shared'
 import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
 import type { IouCurrency } from './trustline'
 
@@ -75,13 +75,14 @@ async function quoteXrpDrops(
  * Ensure the agent holds at least `requiredValue` of an IOU (the currency LEARNED
  * from the 402). Swaps XRP -> IOU on-chain via an OfferCreate (ImmediateOrCancel)
  * signed through OWS — the offer-crossing engine consults AMM liquidity, so no
- * path-finding is needed. Never spends beyond MAX_SPEND.
+ * path-finding is needed. `TakerGets` is sized from the live book quote (+ slippage);
+ * the XRP spend cap is enforced by the OWS policy at signing, not here.
  */
 export async function ensureIouBalance(
   signer: OwsXrplSigner,
   network: NetworkConfig,
   iou: IouCurrency,
-  params: { requiredValue: string; maxSpendXrp: number; slippageBps: number },
+  params: { requiredValue: string; slippageBps: number },
   log: Logger,
 ): Promise<void> {
   const label = currencyLabel(iou.currency)
@@ -94,12 +95,6 @@ export async function ensureIouBalance(
 
   const need = (Number(params.requiredValue) - Number(have)).toString()
   const maxXrpDrops = await quoteXrpDrops(network, iou, need, params.slippageBps, log)
-  const capDrops = BigInt(toDrops(String(params.maxSpendXrp)))
-  if (maxXrpDrops > capDrops) {
-    throw new Error(
-      `swap would exceed MAX_SPEND: needs up to ${Number(maxXrpDrops) / 1e6} XRP, cap ${params.maxSpendXrp} XRP`,
-    )
-  }
 
   log.step(`swapping XRP -> ${label}`, { need, maxXrpDrops: maxXrpDrops.toString() })
   await signer.signAndSubmit(

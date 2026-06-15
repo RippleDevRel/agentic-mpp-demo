@@ -1,4 +1,4 @@
-import { type Logger, type NetworkConfig, toDrops } from '@rwa/shared'
+import type { Logger, NetworkConfig } from '@rwa/shared'
 import { Challenge, Credential } from 'mppx'
 import type { Amount } from 'xrpl'
 import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
@@ -67,7 +67,6 @@ export async function payViaMpp(
   signer: OwsXrplSigner,
   network: NetworkConfig,
   url: string,
-  maxSpendXrp: number,
   log: Logger,
 ): Promise<PaymentOutcome> {
   log.mpp('→ GET (attempt resource)', { url })
@@ -90,11 +89,8 @@ export async function payViaMpp(
     recipient: req.recipient,
   })
 
-  // Bound a direct XRP payment by MAX_SPEND (IOU spend is bounded at the swap).
-  if (currency.kind === 'XRP' && BigInt(req.amount) > BigInt(toDrops(String(maxSpendXrp)))) {
-    throw new Error(`payment ${Number(req.amount) / 1e6} XRP exceeds MAX_SPEND ${maxSpendXrp} XRP`)
-  }
-
+  // No app-level spend gate: a direct XRP payment over the cap is rejected by the
+  // OWS policy at signing time (the executable spend-cap policy).
   const amount = toXrplAmount(currency, req.amount)
   const payment =
     typeof amount === 'string'

@@ -19,7 +19,6 @@ export interface AcquireDeps {
   network: NetworkConfig
   /** The seller's service endpoint — the ONLY merchant locator the agent is given. */
   merchantUrl: string
-  maxSpendXrp: number
   slippageBps: number
   log: Logger
   summary: RunSummary
@@ -49,13 +48,13 @@ async function acquireOne(deps: AcquireDeps, issuance: DiscoveredIssuance): Prom
       signer,
       network,
       quote.currency,
-      { requiredValue: quote.amount, maxSpendXrp: deps.maxSpendXrp, slippageBps: deps.slippageBps },
+      { requiredValue: quote.amount, slippageBps: deps.slippageBps },
       log,
     )
   }
 
   // Pay through MPP (push mode, OWS-signed) and take delivery.
-  const outcome = await payViaMpp(signer, network, issuance.url, deps.maxSpendXrp, log)
+  const outcome = await payViaMpp(signer, network, issuance.url, log)
 
   const balance = await confirmDelivery(deps, issuance.issuanceId)
   const paidLabel = quote.currency.kind === 'IOU' ? currencyLabel(quote.currency.currency) : 'XRP'
@@ -96,7 +95,7 @@ export async function runAcquisition(
   await ensureFunded(
     deps.signer.address(),
     deps.network,
-    { ownerObjects: 2, swapBudgetXrp: String(deps.maxSpendXrp) },
+    { ownerObjects: 2, swapBudgetXrp: String(store.maxSpendXrp) },
     deps.log,
   )
 
