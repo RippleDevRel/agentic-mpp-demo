@@ -124,6 +124,23 @@ export class OwsXrplSigner {
   }
 
   /**
+   * Sign an arbitrary 32-byte digest (hex) via OWS and return the DER signature
+   * hex. Used for off-ledger PayChannel claims (the key never leaves OWS). No
+   * account sequence is involved, so this does not go through the signing mutex.
+   */
+  signDigest(hashHex: string): string {
+    const sig = signHash(
+      this.o.walletName,
+      'xrpl',
+      hashHex,
+      this.o.credential,
+      0,
+      this.o.vaultPath ?? undefined,
+    )
+    return sig.signature.toUpperCase()
+  }
+
+  /**
    * Autofill, sign through OWS, broadcast, and wait for validation. The tx's
    * `Account` defaults to this signer's address; `SigningPubKey` is set to the
    * recovered key; `NetworkID` is stripped (testnet/local network id <= 1024
