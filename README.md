@@ -328,6 +328,38 @@ in code; OWS catches the *dangerous* (out-of-policy) either way — not the *inc
 Atomic delivery-versus-payment (escrow/crypto-conditions); mainnet / real-value RLUSD;
 multi-agent competition; off-chain payment channels.
 
+## Notes & moving forward (hardening the key boundary)
+
+This demo keeps the key out of the **agent's reach** (no tool can export it or sign with a
+local key — see [Why an autonomous agent cannot bypass OWS](#why-an-autonomous-agent-cannot-bypass-ows)).
+But OWS runs **in-process** (a native NAPI module, not a separate daemon), so the boundary
+today is *logical*, not a separate process or hardware. The plaintext key materializes
+transiently in the agent process's memory during signing, and the encrypted vault lives
+wherever `OWS_VAULT_PATH` points. For a real deployment, harden in this order:
+
+1. **Never bake the vault or secrets into an image.** Mount the vault as a volume; pass
+   `OWS_PASSPHRASE` / tokens via a secrets manager or runtime env, never a layer or VCS.
+2. **Run with the token, not the passphrase.** Create the wallet once (the only step that
+   needs `OWS_PASSPHRASE`), then run the agent with just the vault + the policy-bound API
+   token (`.data/agent.<network>.json`). The passphrase never enters the run environment;
+   the token is XRPL-only, expiring, and spend-capped.
+3. **Tighten the policy for the target.** Per-recipient allowlists, a lower `MAX_SPEND`,
+   shorter token expiry, and—once OWS supports it—a cumulative/rolling limit instead of a
+   per-transaction one.
+4. **Separate the signer from the agent (the real isolation).** Move OWS into its own
+   service/container that owns the vault and exposes only a sign endpoint; the agent
+   container holds no vault and no key, and calls out to sign. Then a compromise of the
+   agent process cannot touch key material at all. This is what the upstream
+   `Wallet.fromSigner` (external-signer) gap unlocks — until it lands, signing is
+   in-process. A two-service split (agent ↔ OWS signer) is the natural next step.
+5. **Defense in depth around the model.** Keep `settingSources: []` and the explicit
+   `allowedTools` allowlist so no extra tools leak in; keep the `isolation.test.ts` guard
+   in CI so no local-key signing path can be introduced by accident.
+
+In short: today the agent *cannot* obtain or misuse the key, but the key still shares the
+agent's process. Production isolation = a separate signer service + secrets management +
+a policy scoped to the deployment.
+
 ## License
 
 Apache-2.0. See `LICENSE`.
