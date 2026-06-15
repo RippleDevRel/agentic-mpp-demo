@@ -10,7 +10,7 @@
  * Run: OWS_PASSPHRASE=... MERCHANT_URL=... ANTHROPIC_API_KEY=... pnpm agent:minimal
  */
 import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
-import { getEnv, getEnvNumber, withClient } from '@rwa/shared'
+import { colorLegend, getEnv, getEnvNumber, withClient } from '@rwa/shared'
 import { Challenge, Credential } from 'mppx'
 import { z } from 'zod'
 import { buildAgentContext } from './context'
@@ -21,6 +21,7 @@ const SERVER = 'rwamin'
 const ok = (data: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(data) }] })
 
 async function main(): Promise<void> {
+  console.log(colorLegend())
   const { deps } = await buildAgentContext()
   const { signer, network, merchantUrl, maxSpendXrp, log } = deps
   const address = signer.address()

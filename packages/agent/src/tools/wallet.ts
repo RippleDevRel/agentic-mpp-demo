@@ -40,7 +40,7 @@ export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Pr
 
   const existing = loadAgentStore(network.name)
   if (existing) {
-    log.info('reusing OWS agent wallet', { address: existing.address })
+    log.ows('reusing OWS agent wallet', { address: existing.address })
     const signer = new OwsXrplSigner({
       walletName: existing.walletName,
       credential: existing.token,
@@ -59,7 +59,7 @@ export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Pr
   const info = getWallet(wallet.id, vaultPath ?? undefined)
   const xrpl = info.accounts.find((a) => a.chainId.startsWith('xrpl'))
   if (!xrpl) throw new Error('OWS wallet has no XRPL account')
-  log.step('OWS agent wallet ready (key generated inside OWS)', { address: xrpl.address })
+  log.ows('OWS agent wallet ready (key generated inside OWS)', { address: xrpl.address })
 
   // Bound the agent: XRPL-only chain allowlist + expiry (declarative), AND a
   // per-transaction XRP spend cap enforced on-device by an executable policy
@@ -82,7 +82,7 @@ export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Pr
   }
   try {
     createPolicy(JSON.stringify(policy), vaultPath ?? undefined)
-    log.step('registered OWS policy', { policyId, allow: XRPL_CHAIN_ID, maxSpendXrp, expiresAt })
+    log.ows('registered OWS policy', { policyId, allow: XRPL_CHAIN_ID, maxSpendXrp, expiresAt })
   } catch (err) {
     log.warn('policy creation skipped (may already exist)', {
       msg: err instanceof Error ? err.message : String(err),
@@ -99,7 +99,7 @@ export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Pr
     expiresAt,
     vaultPath ?? undefined,
   )
-  log.step('issued OWS agent token (policy-enforced)', { keyId: key.id })
+  log.ows('issued OWS agent token (policy-enforced)', { keyId: key.id })
 
   const store: AgentStore = {
     walletId: wallet.id,

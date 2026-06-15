@@ -10,7 +10,7 @@
 
 import { buildAgentContext, runAcquisition, runAgentLoop } from '@rwa/agent'
 import { startServer } from '@rwa/merchant'
-import { getEnv } from '@rwa/shared'
+import { colorLegend, getEnv } from '@rwa/shared'
 
 function setDefault(key: string, value: string): void {
   if (!process.env[key]) process.env[key] = value
@@ -31,6 +31,7 @@ async function main(): Promise<void> {
   setDefault('MAX_SPEND', '50')
   setDefault('SWAP_SLIPPAGE_BPS', '1000')
 
+  console.log(colorLegend())
   console.log('=== booting merchant ===')
   const merchant = await startServer()
   // Hand the agent ONLY the seller's service endpoint — not its ledger address.

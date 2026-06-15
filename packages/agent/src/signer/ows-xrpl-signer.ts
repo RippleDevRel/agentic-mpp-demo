@@ -143,7 +143,7 @@ export class OwsXrplSigner {
         delete prepared.NetworkID
 
         const txHex = encode(prepared as never)
-        this.o.log.step(`signing via OWS (key isolated): ${label}`)
+        this.o.log.ows(`signing via OWS (key isolated): ${label}`)
         const { txHash } = signAndSend(
           this.o.walletName,
           'xrpl',

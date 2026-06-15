@@ -75,6 +75,13 @@ export async function startServer(): Promise<{
           return
         }
 
+        const credential = req.headers.authorization
+        log.mpp('← incoming MPP request', {
+          method: req.method,
+          path,
+          credential: credential ?? '(none — will issue a 402 challenge)',
+        })
+
         const handler = mppx['xrpl/charge']({
           amount: chargeAmount(ctx),
           currency: chargeCurrencyString(ctx),
@@ -83,12 +90,16 @@ export async function startServer(): Promise<{
 
         const result = await handler(toWebRequest(req))
         if (result.status === 402) {
-          log.info('402 PAYMENT REQUIRED', {
+          const challengeResp = result.challenge as Response
+          log.mpp('402 PAYMENT REQUIRED', {
             issuanceId,
             amount: chargeAmount(ctx),
             currency: cfg.payment.label,
           })
-          await sendWebResponse(result.challenge as Response, res)
+          log.mpp('→ 402 challenge sent', {
+            wwwAuthenticate: challengeResp.headers.get('www-authenticate') ?? '(none)',
+          })
+          await sendWebResponse(challengeResp, res)
           return
         }
 
@@ -98,22 +109,19 @@ export async function startServer(): Promise<{
         const reference = Receipt.fromResponse(peek).reference
         if (!reference)
           throw new Error('Payment verified but no receipt reference to key delivery on')
-        log.step('payment verified — delivering RWA MPT', { reference })
+        log.mpp('payment verified — delivering RWA MPT', { reference })
 
         const delivery = await deliver(ctx, { reference, issuanceId, units: offer.units })
-        const body = result.withReceipt(
-          Response.json({
-            ok: true,
-            delivered: {
-              issuanceId,
-              to: delivery.to,
-              units: offer.units,
-              baseAmount: delivery.baseAmount,
-              authorizeHash: delivery.authorizeHash,
-              issueHash: delivery.issueHash,
-            },
-          }),
-        )
+        const delivered = {
+          issuanceId,
+          to: delivery.to,
+          units: offer.units,
+          baseAmount: delivery.baseAmount,
+          authorizeHash: delivery.authorizeHash,
+          issueHash: delivery.issueHash,
+        }
+        log.mpp('→ delivery response sent', { body: JSON.stringify({ ok: true, delivered }) })
+        const body = result.withReceipt(Response.json({ ok: true, delivered }))
         await sendWebResponse(body as Response, res)
         return
       }

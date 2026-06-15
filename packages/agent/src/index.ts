@@ -10,12 +10,13 @@
  * key (e.g. CI), it runs the same tools through a deterministic pipeline so the
  * flow stays verifiable. Run: pnpm --filter @rwa/agent start
  */
-import { getEnv } from '@rwa/shared'
+import { colorLegend, getEnv } from '@rwa/shared'
 import { buildAgentContext } from './context'
 import { runAgentLoop } from './loop'
 import { runAcquisition } from './pipeline'
 
 async function main(): Promise<void> {
+  console.log(colorLegend())
   const { deps, store, goal } = await buildAgentContext()
   deps.log.info('agent goal', { goal })
 

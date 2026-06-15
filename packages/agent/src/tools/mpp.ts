@@ -40,6 +40,7 @@ function toXrplAmount(currency: ParsedCurrency, amount: string): Amount {
  * address is configured ahead of time.
  */
 export async function quoteResource(url: string, log: Logger): Promise<ResourceQuote> {
+  log.mpp('→ GET (read 402 quote, no payment)', { url })
   const res = await fetch(url)
   if (res.status !== 402) {
     throw new Error(`expected a 402 quote from ${url}, got ${res.status}: ${await res.text()}`)
@@ -47,7 +48,8 @@ export async function quoteResource(url: string, log: Logger): Promise<ResourceQ
   const challenge = Challenge.fromResponse(res)
   const req = challenge.request as { amount: string; currency: string; recipient: string }
   const currency = parseCurrency(req.currency)
-  log.step('quoted resource from its 402 challenge', {
+  log.mpp('← 402 challenge', { status: res.status, challenge: JSON.stringify(challenge.request) })
+  log.mpp('quoted resource from its 402 challenge', {
     recipient: req.recipient,
     amount: req.amount,
     currency: currency.kind === 'XRP' ? 'XRP' : `IOU issuer=${currency.issuer}`,
@@ -68,9 +70,10 @@ export async function payViaMpp(
   maxSpendXrp: number,
   log: Logger,
 ): Promise<PaymentOutcome> {
+  log.mpp('→ GET (attempt resource)', { url })
   const first = await fetch(url)
   if (first.status === 200) {
-    log.info('resource already accessible (no payment required)')
+    log.mpp('resource already accessible (no payment required)')
     return { paymentHash: '', delivered: await first.json() }
   }
   if (first.status !== 402) {
@@ -80,7 +83,8 @@ export async function payViaMpp(
   const challenge = Challenge.fromResponse(first)
   const req = challenge.request as { amount: string; currency: string; recipient: string }
   const currency = parseCurrency(req.currency)
-  log.step('received 402 challenge', {
+  log.mpp('← 402 challenge', { status: first.status, challenge: JSON.stringify(challenge.request) })
+  log.mpp('received 402 challenge', {
     amount: req.amount,
     currency: currency.kind === 'XRP' ? 'XRP' : `IOU issuer=${currency.issuer}`,
     recipient: req.recipient,
@@ -111,13 +115,20 @@ export async function payViaMpp(
     source,
   } as never)
 
-  log.step('submitting MPP credential (tx hash) to merchant')
+  log.mpp('submitting MPP credential (tx hash) to merchant')
+  log.mpp('→ GET (Authorization: MPP credential)', {
+    url,
+    source,
+    paymentHash: submitted.hash,
+    credential,
+  })
   const second = await fetch(url, { headers: { Authorization: credential } })
   const body = await second.json().catch(() => null)
+  log.mpp('← settlement response', { status: second.status, body: JSON.stringify(body) })
   if (!second.ok) {
     throw new Error(`MPP settlement rejected: ${second.status} ${JSON.stringify(body)}`)
   }
-  log.info('MPP payment accepted; merchant delivering')
+  log.mpp('MPP payment accepted; merchant delivering')
   return {
     paymentHash: submitted.hash,
     delivered: (body as { delivered?: unknown })?.delivered ?? body,
