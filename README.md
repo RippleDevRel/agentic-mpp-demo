@@ -168,6 +168,41 @@ The clean upstream fix would be an external-signer constructor on the SDK `Walle
 | `signHash` / `signAndSend` brokered signing | the **private key / mnemonic** (it stays encrypted in the vault) |
 | the recovered **public key** + its own XRPL address | any way to export the key (`exportWallet`/seed paths are blocked by a test) |
 
+### On-chain access: reads via xrpl.js, writes via OWS
+
+The agent's **code** depends on `xrpl.js` for all ledger **reads** — `withClient`
+(`packages/shared/src/xrpl.ts`) opens an xrpl.js `Client` over **WebSocket**
+(`XRPL_RPC_URL`) and issues rippled queries (`account_info`, `account_objects`,
+`account_lines`, `book_offers`, `tx`). **Writes** never go through xrpl.js submit: the tx
+is autofilled/encoded with xrpl.js, then handed to **OWS `signAndSend`**, which signs
+inside the vault and broadcasts over **HTTP JSON-RPC** (`XRPL_HTTP_RPC_URL`). So reads use
+the WS endpoint; the signed write path uses OWS over HTTP.
+
+What the **model** can query depends on the mode: in **rails** the read happens inside
+domain tools (`get_status`, `discover_issuances`, `quote_resource`, …) and the model only
+sees shaped results; in **minimal** a thin `xrpl_query` tool forwards `{command, params}`
+to `client.request` — full read access, but still executed by our code, never by the model.
+
+### Why an autonomous agent cannot bypass OWS
+
+"The agent has xrpl.js" is about the **code**, not the **model**. The model does not run
+code — it cannot `import xrpl` or call `Wallet.generate()`. It can only emit **tool calls**
+against a fixed allow-list, and:
+
+- **No tool generates, holds, or signs with a local key.** The only signing primitive
+  (`xrpl_sign_submit` in minimal; the domain verbs in rails) routes *exclusively* through
+  the OWS signer. The model can build a transaction JSON, but the sole way it reaches the
+  ledger is OWS — there is no local-key path to choose.
+- `xrpl_query` is **read-only** (`client.request`, never a locally-signed `submit`); xrpl.js
+  is reachable only from our code.
+- The surface is locked: `allowedTools` is an explicit allow-list and `settingSources: []`
+  means no host MCP servers / skills / tools are loaded.
+- A build-time guard (`packages/agent/src/signer/isolation.test.ts`) fails CI if anyone
+  adds a local-key path (`fromSeed`, `fromFaucet`, `exportWallet`, …) to the agent code.
+
+So the guarantee is **structural, not prompt-based**: the agent is genuinely autonomous,
+but its only on-chain write path is OWS — itself bounded by the policy.
+
 ## Workspace layout
 
 ```
