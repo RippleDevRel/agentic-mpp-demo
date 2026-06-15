@@ -199,4 +199,4 @@ multi-agent competition; off-chain payment channels.
 
 ## License
 
-Apache-2.0. See `LICENSE` and `NOTICE`.
+Apache-2.0. See `LICENSE`.
