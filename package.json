@@ -19,7 +19,8 @@
     "agent:minimal": "tsx packages/agent/src/minimal.ts",
     "check:testnet": "tsx scripts/check-testnet.ts",
     "demo": "tsx scripts/demo.ts",
-    "sdk:vendor": "tsx scripts/vendor-sdk.ts"
+    "sdk:vendor": "tsx scripts/vendor-sdk.ts",
+    "check:channel": "tsx scripts/check-channel.ts"
   },
   "dependencies": {
     "@rwa/agent": "workspace:*",

@@ -7,10 +7,10 @@
  */
 import { createHash } from 'node:crypto'
 import { secp256k1 } from '@noble/curves/secp256k1'
-import { getWallet, signAndSend, signHash } from '@open-wallet-standard/core'
+import { getWallet, signAndSend, signHash, signTransaction } from '@open-wallet-standard/core'
 import type { Logger, NetworkConfig } from '@rwa/shared'
 import { withClient } from '@rwa/shared'
-import { type Client, encode, type SubmittableTransaction } from 'xrpl'
+import { type Client, encode, hashes, type SubmittableTransaction } from 'xrpl'
 
 const XRPL_ALPHABET = 'rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz'
 
@@ -138,6 +138,42 @@ export class OwsXrplSigner {
       this.o.vaultPath ?? undefined,
     )
     return sig.signature.toUpperCase()
+  }
+
+  /**
+   * Autofill and OWS-sign a transaction WITHOUT broadcasting, returning the
+   * signed tx blob (hex) + its hash. Used for the MPP channel `open` credential,
+   * which carries the signed `PaymentChannelCreate` blob for the merchant to
+   * submit. Same SigningPubKey-injection trick as signAndSubmit; OWS signs the
+   * tx and returns only the signature, which we assemble into the blob.
+   */
+  async signToBlob(
+    tx: Partial<SubmittableTransaction> & { TransactionType: string },
+  ): Promise<{ blob: string; hash: string }> {
+    return this.runExclusive(async () => {
+      const address = this.address()
+      const pubKey = this.publicKey()
+      return withClient(this.o.network.rpcUrl, async (client: Client) => {
+        const prepared = (await client.autofill({
+          Account: address,
+          ...tx,
+          SigningPubKey: pubKey,
+        } as never)) as Record<string, unknown>
+        delete prepared.TxnSignature
+        delete prepared.NetworkID
+        const { signature } = signTransaction(
+          this.o.walletName,
+          'xrpl',
+          encode(prepared as never),
+          this.o.credential,
+          0,
+          this.o.vaultPath ?? undefined,
+        )
+        const signed = { ...prepared, TxnSignature: signature.toUpperCase() }
+        const blob = encode(signed as never)
+        return { blob, hash: hashes.hashSignedTx(blob) }
+      })
+    })
   }
 
   /**
