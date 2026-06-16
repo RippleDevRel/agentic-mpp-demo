@@ -101,7 +101,11 @@ the wallet file's `crypto` block and is never written in cleartext:
 - **Cipher**: `aes-256-gcm` (with `iv` + `auth_tag`) encrypts the mnemonic. GCM is
   *authenticated* — any tampering with the ciphertext is detected on decrypt.
 
-Without the owner passphrase, the ciphertext is inert.
+Without the owner passphrase, the ciphertext is inert — **so the passphrase strength is the
+at-rest protection**. OWS itself does **not** enforce it: `createWallet` happily "encrypts"
+the owner copy with an empty/trivial passphrase (scrypt over a zero-entropy secret = no real
+protection). This template therefore rejects weak/empty `OWS_PASSPHRASE` at wallet creation
+(`requireStrongOwnerPassphrase`), and the demo generates a strong random one.
 
 ### API tokens — how the agent signs without the passphrase
 

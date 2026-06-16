@@ -20,6 +20,28 @@ import { type AgentStore, loadAgentStore, saveAgentStore } from '../state'
 /** OWS uses the `xrpl:mainnet` chain id for XRPL (addresses are network-agnostic). */
 const XRPL_CHAIN_ID = 'xrpl:mainnet'
 
+/** Minimum owner-passphrase length. It is the secret that encrypts the key at rest. */
+const MIN_PASSPHRASE_LENGTH = 12
+/** Known trivial defaults we refuse to protect a real key with. */
+const WEAK_PASSPHRASES = new Set(['demo-owner-pass', 'password', 'changeme', 'passphrase'])
+
+/**
+ * Resolve the OWS owner passphrase, refusing empty/weak values. OWS itself does
+ * NOT enforce passphrase strength — `createWallet` will happily "encrypt" the
+ * owner key copy with an empty or trivial passphrase (scrypt over a zero-entropy
+ * secret = no real protection). Since this passphrase is the at-rest encryption
+ * key for the wallet, we require a non-trivial one here.
+ */
+function requireStrongOwnerPassphrase(): string {
+  const p = requireEnv('OWS_PASSPHRASE')
+  if (p.trim().length < MIN_PASSPHRASE_LENGTH || WEAK_PASSPHRASES.has(p)) {
+    throw new Error(
+      `OWS_PASSPHRASE is too weak — it encrypts the wallet key at rest. Use at least ${MIN_PASSPHRASE_LENGTH} non-trivial characters (e.g. a passphrase from a manager).`,
+    )
+  }
+  return p
+}
+
 /** Absolute path to the executable spend-cap policy, made runnable for OWS. */
 function maxSpendPolicyExecutable(): string {
   const path = fileURLToPath(new URL('../../policy/max-spend.mjs', import.meta.url))
@@ -60,7 +82,7 @@ export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Pr
     return { signer, address: existing.address, store: existing }
   }
 
-  const ownerPassphrase = requireEnv('OWS_PASSPHRASE')
+  const ownerPassphrase = requireStrongOwnerPassphrase()
 
   // Create (or adopt) the OWS wallet. The key is generated and stays in OWS.
   const present = listWallets(vaultPath ?? undefined).find((w) => w.name === walletName)

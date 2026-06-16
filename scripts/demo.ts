@@ -8,12 +8,30 @@
  * Run: pnpm demo
  */
 
+import { randomBytes } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { buildAgentContext, runAcquisition, runAgentLoop } from '@rwa/agent'
 import { startServer } from '@rwa/merchant'
 import { colorLegend, getEnv } from '@rwa/shared'
 
 function setDefault(key: string, value: string): void {
   if (!process.env[key]) process.env[key] = value
+}
+
+/**
+ * Return a strong random owner passphrase for the demo, persisted (0600) inside
+ * the vault dir so it stays in sync with the wallet: deleting the vault also
+ * drops the passphrase (fresh wallet next run), and reruns reuse the same one.
+ * Never a hardcoded/public default — it is the at-rest encryption secret.
+ */
+function ensureDemoPassphrase(vaultPath: string): string {
+  const file = resolve(vaultPath, '.demo-passphrase')
+  if (existsSync(file)) return readFileSync(file, 'utf8').trim()
+  mkdirSync(vaultPath, { recursive: true })
+  const passphrase = randomBytes(24).toString('base64url')
+  writeFileSync(file, passphrase, { mode: 0o600 })
+  return passphrase
 }
 
 async function main(): Promise<void> {
@@ -25,9 +43,12 @@ async function main(): Promise<void> {
   setDefault('RWA_AVAILABLE_UNITS', '3')
   setDefault('ISSUANCE_INTERVAL_MS', '0')
   setDefault('MERCHANT_PORT', '8787')
-  setDefault('OWS_PASSPHRASE', 'demo-owner-pass')
   setDefault('OWS_VAULT_PATH', '.ows-demo')
   setDefault('OWS_WALLET_NAME', 'agent-treasury-demo')
+  // The owner passphrase encrypts the wallet key at rest — never a public default.
+  // Generate a strong random one and persist it alongside the vault so reruns reuse
+  // the same wallet (token minting on reuse needs the original passphrase).
+  setDefault('OWS_PASSPHRASE', ensureDemoPassphrase(process.env.OWS_VAULT_PATH ?? '.ows-demo'))
   setDefault('MAX_SPEND', '50')
   setDefault('SWAP_SLIPPAGE_BPS', '1000')
 
