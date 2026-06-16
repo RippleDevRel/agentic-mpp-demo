@@ -7,13 +7,19 @@
 import { chmodSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import {
+  getEnv,
+  getEnvNumber,
+  type Logger,
+  type NetworkConfig,
+  requireEnv,
+} from '@agentic-mpp-demo-xrpl/shared'
+import {
   createApiKey,
   createPolicy,
   createWallet,
   getWallet,
   listWallets,
 } from '@open-wallet-standard/core'
-import { getEnv, getEnvNumber, type Logger, type NetworkConfig, requireEnv } from '@agentic-mpp-demo-xrpl/shared'
 import { OwsXrplSigner } from '../signer/ows-xrpl-signer'
 import { type AgentStore, loadAgentStore, saveAgentStore } from '../state'
 

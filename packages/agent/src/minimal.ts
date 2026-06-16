@@ -9,8 +9,9 @@
  *
  * Run: OWS_PASSPHRASE=... MERCHANT_URL=... ANTHROPIC_API_KEY=... pnpm agent:minimal
  */
-import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
+
 import { colorLegend, getEnv, getEnvNumber, withClient } from '@agentic-mpp-demo-xrpl/shared'
+import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
 import { Challenge, Credential } from 'mppx'
 import { z } from 'zod'
 import { buildAgentContext } from './context'

@@ -7,10 +7,10 @@
  * never leaves the vault. See the OwsXrplSigner class doc for the step-by-step.
  */
 import { createHash } from 'node:crypto'
-import { secp256k1 } from '@noble/curves/secp256k1'
-import { getWallet, signHash } from '@open-wallet-standard/core'
 import type { Logger, NetworkConfig } from '@agentic-mpp-demo-xrpl/shared'
 import { withClient } from '@agentic-mpp-demo-xrpl/shared'
+import { secp256k1 } from '@noble/curves/secp256k1'
+import { getWallet, signHash } from '@open-wallet-standard/core'
 import { type Client, encode, encodeForSigning, hashes, type SubmittableTransaction } from 'xrpl'
 
 const XRPL_ALPHABET = 'rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz'

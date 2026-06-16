@@ -4,8 +4,9 @@
  * loop. The "how" of each on-chain action lives in tools/*; the model only
  * orchestrates. See minimal.ts (generic primitives) and pipeline.ts (no model).
  */
-import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
+
 import { getEnv, getEnvNumber, listMptHoldings, withClient } from '@agentic-mpp-demo-xrpl/shared'
+import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import type { AcquireDeps } from './pipeline'
 import type { AgentStore } from './state'
