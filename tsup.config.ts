@@ -6,9 +6,12 @@ import { defineConfig } from 'tsup'
 export default defineConfig({
   entry: {
     'merchant/server': 'packages/merchant/src/server.ts',
+    'merchant/channel-server': 'packages/merchant/src/channel-server.ts',
     'agent/index': 'packages/agent/src/index.ts',
     'agent/minimal': 'packages/agent/src/minimal.ts',
+    'agent/channel': 'packages/agent/src/channel.ts',
     'scripts/check-testnet': 'scripts/check-testnet.ts',
+    'scripts/check-channel': 'scripts/check-channel.ts',
     'scripts/demo': 'scripts/demo.ts',
   },
   outDir: 'dist',

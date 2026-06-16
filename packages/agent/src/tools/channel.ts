@@ -94,7 +94,6 @@ export function signVoucher(
  */
 export async function closeChannel(
   signer: OwsXrplSigner,
-  network: NetworkConfig,
   channelId: string,
   log: Logger,
 ): Promise<{ hash: string }> {

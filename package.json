@@ -21,7 +21,8 @@
     "demo": "tsx scripts/demo.ts",
     "sdk:vendor": "tsx scripts/vendor-sdk.ts",
     "check:channel": "tsx scripts/check-channel.ts",
-    "merchant:channel": "tsx packages/merchant/src/channel-server.ts"
+    "merchant:channel": "tsx packages/merchant/src/channel-server.ts",
+    "agent:channel": "tsx packages/agent/src/channel.ts"
   },
   "dependencies": {
     "@rwa/agent": "workspace:*",

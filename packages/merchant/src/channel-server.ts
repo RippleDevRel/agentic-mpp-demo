@@ -201,6 +201,13 @@ export async function startChannelServer(): Promise<{
           units: offer.units,
           payer: rec.funder,
         })
+        // Keep issuing: queue the next RWA MPT so the agent always has a next one
+        // to buy until it hits the channel limit.
+        await releaseOne(ctx).catch((e) =>
+          log.warn('could not queue next issuance', {
+            msg: e instanceof Error ? e.message : String(e),
+          }),
+        )
         const body = result.withReceipt(
           Response.json({
             ok: true,
@@ -303,7 +310,9 @@ function toWebRequest(req: IncomingMessage): Request {
 
 async function sendWebResponse(webRes: Response, res: ServerResponse): Promise<void> {
   res.statusCode = webRes.status
-  webRes.headers.forEach((v, k) => res.setHeader(k, v))
+  webRes.headers.forEach((v, k) => {
+    res.setHeader(k, v)
+  })
   res.end(await webRes.text())
 }
 

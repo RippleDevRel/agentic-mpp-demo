@@ -351,6 +351,42 @@ agent trades that autonomy for determinism, lower cost, and testability. Pick by
 you trust the model to assemble protocol-correct transactions vs. how much you want pinned
 in code; OWS catches the *dangerous* (out-of-policy) either way — not the *incorrect*.
 
+## Streaming over a payment channel (third variant)
+
+A different payment shape: instead of one on-chain payment per purchase, the agent locks
+XRP in an **XRPL Payment Channel** once and then **streams** purchases as off-ledger
+cumulative vouchers (claims) — pay-per-token micropayments, MPP `channel` intent.
+
+It stays merchant-driven (the merchant proposes the channel in a 402) and **XRP-only**
+(payment channels carry XRP, so there is no RLUSD swap/trustline here):
+
+1. The merchant issues **nothing** up front; `/catalog` carries a hint to `/subscribe`.
+2. The agent ventures to `/subscribe`, gets a **402 `channel` offer**, and opens a PayChannel
+   (e.g. 50 XRP) — the `PaymentChannelCreate` is **OWS-signed** and sent as the MPP `open`
+   credential (the merchant submits it).
+3. The merchant then **starts issuing** RWA MPTs. The agent opts in and pays each with a
+   **cumulative `voucher`** (an OWS-signed claim) until it nears the channel capacity, then
+   **closes** (`tfClose`). The merchant redeems the latest voucher (`closeFromStore`).
+
+The key never leaves OWS: claims are signed via `signHash` (a PayChannel claim is a
+secp256k1 signature over `sha512half(encodeForSigningClaim({channel, amount}))`), and the
+channel public key is the recovered OWS key. Verification reuses the SDK's
+`xrpl-mpp-sdk/channel/server` method; only the client signing is reproduced for OWS custody.
+
+```bash
+# terminal 1 — channel-mode merchant (XRP pricing):
+PAYMENT_CURRENCY=XRP RWA_PRICE=10 pnpm merchant:channel
+# terminal 2 — channel-mode buyer (opens a CHANNEL_XRP channel, streams, closes):
+CHANNEL_XRP=50 pnpm agent:channel
+
+pnpm check:channel   # isolated live check: OWS opens a channel + signs a verifiable voucher
+```
+
+> Guardrail note: the OWS executable spend-cap policy bounds `Payment`/`OfferCreate` XRP
+> outflow, not `PaymentChannelCreate` — in channel mode the **channel capacity itself** is the
+> hard spend bound (vouchers above it are unredeemable). A future policy rule could also cap
+> the channel deposit.
+
 ## Environment reference (`.env.example`)
 
 | Variable | Purpose |
@@ -367,6 +403,7 @@ in code; OWS catches the *dangerous* (out-of-policy) either way — not the *inc
 | `MAX_SPEND`, `AGENT_MAX_ITERATIONS` | per-tx XRP cap (enforced by the OWS policy at signing) + loop bound |
 | `OWS_WALLET_NAME`, `OWS_PASSPHRASE`, `OWS_VAULT_PATH` | OWS wallet name, owner passphrase, vault dir |
 | `SWAP_SLIPPAGE_BPS` | swap slippage bound |
+| `CHANNEL_XRP` | channel-mode only: XRP the agent locks in the PayChannel (default `50`) |
 
 ## Known constraints
 
