@@ -1,4 +1,4 @@
-import { BASE_RESERVE_DROPS, OWNER_RESERVE_DROPS } from '@rwa/shared'
+import { BASE_RESERVE_DROPS, OWNER_RESERVE_DROPS } from '@agentic-mpp-demo-xrpl/shared'
 import { describe, expect, it } from 'vitest'
 import { sizeFundingDrops } from './funding'
 

@@ -10,7 +10,7 @@
  *
  * Run: pnpm agent:channel   (against a running `pnpm merchant:channel`)
  */
-import { getEnvNumber, listMptHoldings, withClient } from '@rwa/shared'
+import { getEnvNumber, listMptHoldings, withClient } from '@agentic-mpp-demo-xrpl/shared'
 import { Challenge, Credential } from 'mppx'
 import { toDrops } from 'xrpl-mpp-sdk'
 import { buildAgentContext } from './context'

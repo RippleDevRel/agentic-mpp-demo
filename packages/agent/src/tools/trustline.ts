@@ -9,7 +9,7 @@ import {
   listMptHoldings,
   type NetworkConfig,
   withClient,
-} from '@rwa/shared'
+} from '@agentic-mpp-demo-xrpl/shared'
 import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
 
 /** An IOU currency as learned from a 402 challenge. */

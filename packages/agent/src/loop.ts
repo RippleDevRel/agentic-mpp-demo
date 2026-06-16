@@ -5,7 +5,7 @@
  * orchestrates. See minimal.ts (generic primitives) and pipeline.ts (no model).
  */
 import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
-import { getEnv, getEnvNumber, listMptHoldings, withClient } from '@rwa/shared'
+import { getEnv, getEnvNumber, listMptHoldings, withClient } from '@agentic-mpp-demo-xrpl/shared'
 import { z } from 'zod'
 import type { AcquireDeps } from './pipeline'
 import type { AgentStore } from './state'

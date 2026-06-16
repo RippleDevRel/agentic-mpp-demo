@@ -8,9 +8,9 @@
  *
  * With ANTHROPIC_API_KEY set, a Claude model drives the tool-use loop. Without a
  * key (e.g. CI), it runs the same tools through a deterministic pipeline so the
- * flow stays verifiable. Run: pnpm --filter @rwa/agent start
+ * flow stays verifiable. Run: pnpm --filter @agentic-mpp-demo-xrpl/agent start
  */
-import { colorLegend, getEnv } from '@rwa/shared'
+import { colorLegend, getEnv } from '@agentic-mpp-demo-xrpl/shared'
 import { buildAgentContext } from './context'
 import { runAgentLoop } from './loop'
 import { runAcquisition } from './pipeline'

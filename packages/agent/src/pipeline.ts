@@ -11,7 +11,7 @@ import {
   type NetworkConfig,
   type RunSummary,
   withClient,
-} from '@rwa/shared'
+} from '@agentic-mpp-demo-xrpl/shared'
 import type { OwsXrplSigner } from './signer/ows-xrpl-signer'
 import { type AgentStore, saveAgentStore } from './state'
 import { type DiscoveredIssuance, discover } from './tools/discovery'

@@ -1,4 +1,4 @@
-import { getEnvNumber, rwaMetadata } from '@rwa/shared'
+import { getEnvNumber, rwaMetadata } from '@agentic-mpp-demo-xrpl/shared'
 import type { MerchantContext } from './context'
 
 /**

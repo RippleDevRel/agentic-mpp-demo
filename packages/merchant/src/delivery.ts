@@ -1,4 +1,4 @@
-import { withClient } from '@rwa/shared'
+import { withClient } from '@agentic-mpp-demo-xrpl/shared'
 import { unitsToBaseAmount } from './bootstrap'
 import type { MerchantContext } from './context'
 

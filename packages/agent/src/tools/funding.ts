@@ -3,7 +3,7 @@
  * for the trust line / MPT + swap budget + fee buffer) and top up from the
  * scriptable testnet faucet by destination address (no seed needed).
  */
-import { getXrpBalanceDrops, type Logger, type NetworkConfig, withClient } from '@rwa/shared'
+import { getXrpBalanceDrops, type Logger, type NetworkConfig, withClient } from '@agentic-mpp-demo-xrpl/shared'
 import { BASE_RESERVE_DROPS, fromDrops, OWNER_RESERVE_DROPS, toDrops } from 'xrpl-mpp-sdk'
 
 const TESTNET_FAUCET = 'https://faucet.altnet.rippletest.net/accounts'

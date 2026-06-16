@@ -11,7 +11,7 @@ import {
   loadEnv,
   RunSummary,
   resolveNetwork,
-} from '@rwa/shared'
+} from '@agentic-mpp-demo-xrpl/shared'
 import type { AcquireDeps } from './pipeline'
 import type { AgentStore } from './state'
 import { ensureAgentWallet } from './tools/wallet'

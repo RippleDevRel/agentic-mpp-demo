@@ -5,7 +5,7 @@
  *
  * Usage: NETWORK=testnet tsx scripts/check-testnet.ts
  */
-import { RLUSD_TESTNET } from '@rwa/shared'
+import { RLUSD_TESTNET } from '@agentic-mpp-demo-xrpl/shared'
 import { Client } from 'xrpl'
 
 async function main(): Promise<void> {

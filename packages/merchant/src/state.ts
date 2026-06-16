@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import type { NetworkName } from '@rwa/shared'
+import type { NetworkName } from '@agentic-mpp-demo-xrpl/shared'
 
 /**
  * Persisted merchant state so a restart reuses the same on-chain account and

@@ -6,7 +6,7 @@
  *
  * Run: MAX_SPEND=10 pnpm check:policy
  */
-import { RLUSD_TESTNET } from '@rwa/shared'
+import { RLUSD_TESTNET } from '@agentic-mpp-demo-xrpl/shared'
 import { buildAgentContext } from '../packages/agent/src/context'
 import type { OwsXrplSigner } from '../packages/agent/src/signer/ows-xrpl-signer'
 import { ensureFunded } from '../packages/agent/src/tools/funding'

@@ -6,7 +6,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import type { NetworkName } from '@rwa/shared'
+import type { NetworkName } from '@agentic-mpp-demo-xrpl/shared'
 
 /**
  * Persisted agent wallet capability. The `token` is an OWS API key (a

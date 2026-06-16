@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { chmodSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { RLUSD_TESTNET } from '@rwa/shared'
+import { RLUSD_TESTNET } from '@agentic-mpp-demo-xrpl/shared'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { encode } from 'xrpl'
 

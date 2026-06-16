@@ -1,4 +1,4 @@
-import { RLUSD_TESTNET } from '@rwa/shared'
+import { RLUSD_TESTNET } from '@agentic-mpp-demo-xrpl/shared'
 import { describe, expect, it } from 'vitest'
 import { Client } from 'xrpl'
 

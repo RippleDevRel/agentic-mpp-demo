@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { getEnvNumber } from '@rwa/shared'
+import { getEnvNumber } from '@agentic-mpp-demo-xrpl/shared'
 import { Receipt } from 'mppx'
 import { Mppx, Store } from 'mppx/server'
 import { toDrops } from 'xrpl-mpp-sdk'

@@ -6,7 +6,7 @@
  * testnet liquidity does not leave the balance just short. The XRP spend cap is
  * enforced by the OWS policy at signing, not here.
  */
-import { currencyLabel, type Logger, type NetworkConfig, toIouValue, withClient } from '@rwa/shared'
+import { currencyLabel, type Logger, type NetworkConfig, toIouValue, withClient } from '@agentic-mpp-demo-xrpl/shared'
 import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
 import type { IouCurrency } from './trustline'
 

@@ -5,7 +5,7 @@ import {
   type ResolvedConfig,
   resolveConfig,
   sdkNet,
-} from '@rwa/shared'
+} from '@agentic-mpp-demo-xrpl/shared'
 import { Wallet as XrplWallet } from 'xrpl'
 import { Wallet } from 'xrpl-mpp-sdk'
 import { loadStore, type MerchantStore, saveStore } from './state'

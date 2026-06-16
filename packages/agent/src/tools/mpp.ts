@@ -4,7 +4,7 @@
  * an OWS-signed XRPL Payment whose tx hash is handed to the merchant via an mppx
  * credential. The key stays in OWS; the merchant still verifies the payment.
  */
-import type { Logger, NetworkConfig } from '@rwa/shared'
+import type { Logger, NetworkConfig } from '@agentic-mpp-demo-xrpl/shared'
 import { Challenge, Credential } from 'mppx'
 import type { Amount } from 'xrpl'
 import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'

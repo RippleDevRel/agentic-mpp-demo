@@ -1,5 +1,5 @@
 {
-  "name": "autonomous-rwa-agent",
+  "name": "agentic-mpp-demo-xrpl",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -26,9 +26,9 @@
     "check:policy": "tsx scripts/check-policy.ts"
   },
   "dependencies": {
-    "@rwa/agent": "workspace:*",
-    "@rwa/merchant": "workspace:*",
-    "@rwa/shared": "workspace:*",
+    "@agentic-mpp-demo-xrpl/agent": "workspace:*",
+    "@agentic-mpp-demo-xrpl/merchant": "workspace:*",
+    "@agentic-mpp-demo-xrpl/shared": "workspace:*",
     "xrpl": "^4.0.0"
   },
   "devDependencies": {

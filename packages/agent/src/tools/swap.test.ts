@@ -1,4 +1,4 @@
-import { toIouValue } from '@rwa/shared'
+import { toIouValue } from '@agentic-mpp-demo-xrpl/shared'
 import { describe, expect, it } from 'vitest'
 import { ammQuoteDrops, computeMaxXrpDrops } from './swap'
 

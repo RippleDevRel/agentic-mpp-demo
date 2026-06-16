@@ -4,7 +4,7 @@
  * via OWS; the off-ledger claims are signed via the OWS claim signer — the key
  * never leaves the vault. XRP-only (PayChannels carry XRP), so no swap/trustline.
  */
-import { type Logger, type NetworkConfig, withClient } from '@rwa/shared'
+import { type Logger, type NetworkConfig, withClient } from '@agentic-mpp-demo-xrpl/shared'
 import type { ChannelClaim, OwsChannelClaimSigner } from '../signer/ows-channel-signer'
 import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
 

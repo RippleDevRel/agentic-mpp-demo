@@ -17,7 +17,7 @@
  * Run: pnpm merchant:channel
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { getEnvNumber, withClient } from '@rwa/shared'
+import { getEnvNumber, withClient } from '@agentic-mpp-demo-xrpl/shared'
 import { Credential } from 'mppx'
 import { Mppx, Store } from 'mppx/server'
 import { decode, Wallet as XrplWallet } from 'xrpl'

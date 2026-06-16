@@ -13,7 +13,7 @@ import {
   getWallet,
   listWallets,
 } from '@open-wallet-standard/core'
-import { getEnv, getEnvNumber, type Logger, type NetworkConfig, requireEnv } from '@rwa/shared'
+import { getEnv, getEnvNumber, type Logger, type NetworkConfig, requireEnv } from '@agentic-mpp-demo-xrpl/shared'
 import { OwsXrplSigner } from '../signer/ows-xrpl-signer'
 import { type AgentStore, loadAgentStore, saveAgentStore } from '../state'
 

@@ -3,7 +3,7 @@
  * on-ledger, and return those not yet acquired (id + the 402-protected URL to
  * buy each). The agent is given only the endpoint — never the seller's address.
  */
-import { type Logger, type NetworkConfig, withClient } from '@rwa/shared'
+import { type Logger, type NetworkConfig, withClient } from '@agentic-mpp-demo-xrpl/shared'
 
 export interface DiscoveredIssuance {
   issuanceId: string

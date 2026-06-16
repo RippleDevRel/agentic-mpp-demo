@@ -11,13 +11,13 @@ importers:
 
   .:
     dependencies:
-      '@rwa/agent':
+      '@agentic-mpp-demo-xrpl/agent':
         specifier: workspace:*
         version: link:packages/agent
-      '@rwa/merchant':
+      '@agentic-mpp-demo-xrpl/merchant':
         specifier: workspace:*
         version: link:packages/merchant
-      '@rwa/shared':
+      '@agentic-mpp-demo-xrpl/shared':
         specifier: workspace:*
         version: link:packages/shared
       xrpl:
@@ -45,6 +45,9 @@ importers:
 
   packages/agent:
     dependencies:
+      '@agentic-mpp-demo-xrpl/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@anthropic-ai/claude-agent-sdk':
         specifier: ^0.3.177
         version: 0.3.177(@anthropic-ai/sdk@0.104.1(zod@4.4.3))(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(zod@4.4.3)
@@ -57,9 +60,6 @@ importers:
       '@open-wallet-standard/core':
         specifier: ^1.3.2
         version: 1.3.2
-      '@rwa/shared':
-        specifier: workspace:*
-        version: link:../shared
       mppx:
         specifier: ^0.7.0
         version: 0.7.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))
@@ -75,7 +75,7 @@ importers:
 
   packages/merchant:
     dependencies:
-      '@rwa/shared':
+      '@agentic-mpp-demo-xrpl/shared':
         specifier: workspace:*
         version: link:../shared
       mppx:

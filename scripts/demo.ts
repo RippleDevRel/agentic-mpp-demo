@@ -11,9 +11,9 @@
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { buildAgentContext, runAcquisition, runAgentLoop } from '@rwa/agent'
-import { startServer } from '@rwa/merchant'
-import { colorLegend, getEnv } from '@rwa/shared'
+import { buildAgentContext, runAcquisition, runAgentLoop } from '@agentic-mpp-demo-xrpl/agent'
+import { startServer } from '@agentic-mpp-demo-xrpl/merchant'
+import { colorLegend, getEnv } from '@agentic-mpp-demo-xrpl/shared'
 
 function setDefault(key: string, value: string): void {
   if (!process.env[key]) process.env[key] = value

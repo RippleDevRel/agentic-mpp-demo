@@ -1,4 +1,4 @@
-import { getEnv, rwaMetadata } from '@rwa/shared'
+import { getEnv, rwaMetadata } from '@agentic-mpp-demo-xrpl/shared'
 import type { MerchantContext } from './context'
 
 /** Convert display units (asset-scale aware) to the integer base amount MPTs use. */
