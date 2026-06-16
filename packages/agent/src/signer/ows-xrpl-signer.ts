@@ -1,16 +1,17 @@
 /**
  * OWS signing bridge for XRPL — every agent write goes through here. OWS does
- * not expose the account public key and its signer assumes `SigningPubKey` is
- * already present, so this recovers the pubkey (ECDSA recovery), autofills/encodes
- * the tx, and hands it to OWS `signAndSend`; the private key never leaves the vault.
- * See the OwsXrplSigner class doc for the step-by-step.
+ * not expose the account public key, so this recovers it (ECDSA recovery), then
+ * signs the tx's signing hash via OWS `signHash` and broadcasts the assembled blob
+ * itself via xrpl.js. (`signHash` is the only OWS primitive that accepts our
+ * policy-bound token; `signAndSend`/`signTransaction` reject it.) The private key
+ * never leaves the vault. See the OwsXrplSigner class doc for the step-by-step.
  */
 import { createHash } from 'node:crypto'
 import { secp256k1 } from '@noble/curves/secp256k1'
-import { getWallet, signAndSend, signHash, signTransaction } from '@open-wallet-standard/core'
+import { getWallet, signHash } from '@open-wallet-standard/core'
 import type { Logger, NetworkConfig } from '@rwa/shared'
 import { withClient } from '@rwa/shared'
-import { type Client, encode, hashes, type SubmittableTransaction } from 'xrpl'
+import { type Client, encode, encodeForSigning, hashes, type SubmittableTransaction } from 'xrpl'
 
 const XRPL_ALPHABET = 'rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz'
 
@@ -56,11 +57,12 @@ export interface SubmitResult {
 
 /**
  * Signs and submits arbitrary XRPL transactions through OWS so the private key
- * never enters this process. OWS does not expose the public key and its signer
- * expects `SigningPubKey` to be present in the tx blob, so we recover the
- * secp256k1 public key from a `signHash` signature (matching the OWS address),
- * set it as `SigningPubKey`, then hand the encoded tx to OWS `signAndSend` —
- * which injects `TxnSignature` and broadcasts over HTTP JSON-RPC.
+ * never enters this process. OWS does not expose the public key, so we recover the
+ * secp256k1 public key from a `signHash` signature (matching the OWS address) and
+ * set it as `SigningPubKey`. We then sign the tx's signing hash via `signHash` and
+ * broadcast the assembled blob ourselves via xrpl.js — `signHash` is the only OWS
+ * primitive that accepts the policy-bound API token (`signAndSend`/`signTransaction`
+ * reject it with `InvalidSecretKey`, notably for reused wallets).
  */
 export class OwsXrplSigner {
   private readonly o: OwsXrplSignerOptions
@@ -141,39 +143,41 @@ export class OwsXrplSigner {
   }
 
   /**
-   * Autofill and OWS-sign a transaction WITHOUT broadcasting, returning the
-   * signed tx blob (hex) + its hash. Used for the MPP channel `open` credential,
-   * which carries the signed `PaymentChannelCreate` blob for the merchant to
-   * submit. Same SigningPubKey-injection trick as signAndSubmit; OWS signs the
-   * tx and returns only the signature, which we assemble into the blob.
+   * Autofill + OWS-sign a tx into a signed blob, via `signHash`. This is the
+   * shared signing core for both signToBlob and signAndSubmit. `signHash` is the
+   * ONLY OWS primitive that works with our policy-bound API token — `signAndSend`
+   * and `signTransaction` reject it with `InvalidSecretKey` (notably for reused/
+   * adopted wallets). The XRPL single-sign hash is `sha512half(encodeForSigning(tx))`
+   * with `SigningPubKey` (recovered) set; we sign that digest and assemble the blob.
    */
+  private async buildSignedBlob(
+    client: Client,
+    tx: Partial<SubmittableTransaction> & { TransactionType: string },
+  ): Promise<{ blob: string; hash: string }> {
+    const prepared = (await client.autofill({
+      Account: this.address(),
+      ...tx,
+      SigningPubKey: this.publicKey(),
+    } as never)) as Record<string, unknown>
+    delete prepared.TxnSignature
+    delete prepared.NetworkID
+    const digest = createHash('sha512')
+      .update(Buffer.from(encodeForSigning(prepared as never), 'hex'))
+      .digest()
+      .subarray(0, 32)
+      .toString('hex')
+    const blob = encode({ ...prepared, TxnSignature: this.signDigest(digest) } as never)
+    return { blob, hash: hashes.hashSignedTx(blob) }
+  }
+
+  /** Sign a tx into a blob WITHOUT broadcasting — for the MPP channel `open`
+   * credential, whose `PaymentChannelCreate` blob the merchant submits. */
   async signToBlob(
     tx: Partial<SubmittableTransaction> & { TransactionType: string },
   ): Promise<{ blob: string; hash: string }> {
-    return this.runExclusive(async () => {
-      const address = this.address()
-      const pubKey = this.publicKey()
-      return withClient(this.o.network.rpcUrl, async (client: Client) => {
-        const prepared = (await client.autofill({
-          Account: address,
-          ...tx,
-          SigningPubKey: pubKey,
-        } as never)) as Record<string, unknown>
-        delete prepared.TxnSignature
-        delete prepared.NetworkID
-        const { signature } = signTransaction(
-          this.o.walletName,
-          'xrpl',
-          encode(prepared as never),
-          this.o.credential,
-          0,
-          this.o.vaultPath ?? undefined,
-        )
-        const signed = { ...prepared, TxnSignature: signature.toUpperCase() }
-        const blob = encode(signed as never)
-        return { blob, hash: hashes.hashSignedTx(blob) }
-      })
-    })
+    return this.runExclusive(() =>
+      withClient(this.o.network.rpcUrl, (client: Client) => this.buildSignedBlob(client, tx)),
+    )
   }
 
   /**
@@ -190,34 +194,20 @@ export class OwsXrplSigner {
     // Serialize: even if the model invokes signing tools concurrently, OWS signing
     // and the account sequence are handled one tx at a time.
     return this.runExclusive(async () => {
-      const address = this.address()
-      const pubKey = this.publicKey()
-
       return withClient(this.o.network.rpcUrl, async (client: Client) => {
-        const prepared = (await client.autofill({
-          Account: address,
-          ...tx,
-          SigningPubKey: pubKey,
-        } as never)) as Record<string, unknown>
-        delete prepared.TxnSignature
-        delete prepared.NetworkID
-
-        const txHex = encode(prepared as never)
         this.o.log.ows(`signing via OWS (key isolated): ${label}`)
-        const { txHash } = signAndSend(
-          this.o.walletName,
-          'xrpl',
-          txHex,
-          this.o.credential,
-          0,
-          this.o.network.httpRpcUrl,
-          this.o.vaultPath ?? undefined,
-        )
-
-        const result = await this.waitValidated(client, txHash)
-        this.o.log.txn(label, txHash, this.o.network.explorerTx?.(txHash))
+        const { blob, hash } = await this.buildSignedBlob(client, tx)
+        // Broadcast the OWS-signed blob ourselves via xrpl.js (WebSocket).
+        const submit = (await client.submit(blob)) as { result?: { engine_result?: string } }
+        const prelim = submit.result?.engine_result ?? ''
+        // tem/tef/tel never make it into a ledger → fail fast (tec is included, so let it validate).
+        if (prelim && !/^(tes|ter|tec)/.test(prelim)) {
+          throw new Error(`${label} rejected on submit: ${prelim} (${hash})`)
+        }
+        const result = await this.waitValidated(client, hash)
+        this.o.log.txn(label, hash, this.o.network.explorerTx?.(hash))
         if (result.engineResult !== 'tesSUCCESS') {
-          throw new Error(`${label} failed on-chain: ${result.engineResult} (${txHash})`)
+          throw new Error(`${label} failed on-chain: ${result.engineResult} (${hash})`)
         }
         return result
       })

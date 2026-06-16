@@ -42,7 +42,12 @@ function requireSecret(): string {
   return s
 }
 
-/** Price per RWA MPT, in XRP drops (channels are XRP-only). */
+/**
+ * Price per RWA MPT, in XRP drops. Channel mode is XRP-only by design — the SDK
+ * `channel` intent carries drops with no currency field, and XRPL PayChannels
+ * only hold XRP — so PAYMENT_CURRENCY is irrelevant here: the price is just
+ * RWA_PRICE read as XRP.
+ */
 function priceDrops(ctx: MerchantContext): string {
   return toDrops(String(ctx.cfg.asset.pricePerUnit))
 }
@@ -60,21 +65,72 @@ export async function startChannelServer(): Promise<{
   // Placeholder pubkey for the advertise-only 402 (createChallenge ignores it).
   const merchantPubKey = XrplWallet.fromSeed(store.seed).publicKey
 
-  /** Build an mppx server bound to one channel public key, sharing the Store. */
-  const mppxFor = (publicKey: string) =>
-    Mppx.create({
-      secretKey: requireSecret(),
-      methods: [
-        channelMethod({
-          publicKey,
-          store: sharedStore,
-          wallet: ctx.wallet,
-          network: cfg.network.sdkNetwork,
-          rpcUrl: cfg.network.rpcUrl,
-          autoClose: false,
-        }),
-      ],
+  // Server-initiated session close: if the agent disconnects without closing, the
+  // SDK's auto-close sweeper claims the latest voucher on-chain once the channel
+  // goes idle for `idleMs`. Keep idleMs > the normal gap between vouchers so a live
+  // run is never closed mid-stream.
+  const idleMs = getEnvNumber('CHANNEL_IDLE_MS', 30000)
+  const sweepIntervalMs = getEnvNumber('CHANNEL_SWEEP_MS', 10000)
+
+  // Advertise-only instance for the first 402 (no channel yet, no sweeper).
+  const advertiseMppx = Mppx.create({
+    secretKey: requireSecret(),
+    methods: [
+      channelMethod({
+        publicKey: merchantPubKey,
+        store: sharedStore,
+        wallet: ctx.wallet,
+        network: cfg.network.sdkNetwork,
+        rpcUrl: cfg.network.rpcUrl,
+        autoClose: false,
+      }),
+    ],
+  })
+
+  // One LONG-LIVED instance per channel public key: its in-memory activeChannels
+  // (populated when it verifies the open + vouchers) is what the auto-close sweeper
+  // scans, so the instance must persist across requests — not be rebuilt per call.
+  function buildChannelMppx(publicKey: string) {
+    const method = channelMethod({
+      publicKey,
+      store: sharedStore,
+      wallet: ctx.wallet,
+      network: cfg.network.sdkNetwork,
+      rpcUrl: cfg.network.rpcUrl,
+      autoClose: {
+        idleMs,
+        sweepIntervalMs,
+        onClose: ({
+          channelId,
+          cumulative,
+          txHash,
+        }: {
+          channelId: string
+          cumulative: string
+          txHash: string
+        }) =>
+          log.mpp('AUTO-CLOSE: idle channel claimed on-chain by merchant', {
+            channelId,
+            cumulativeXrp: Number(cumulative) / 1e6,
+            txHash,
+          }),
+        onError: ({ channelId, error }: { channelId: string; error: Error }) =>
+          log.warn('auto-close attempt failed', { channelId, msg: error.message }),
+      },
     })
+    return {
+      mppx: Mppx.create({ secretKey: requireSecret(), methods: [method] }),
+      dispose: method.dispose,
+    }
+  }
+  const methods = new Map<string, ReturnType<typeof buildChannelMppx>>()
+  const methodFor = (publicKey: string) => {
+    const cached = methods.get(publicKey)
+    if (cached) return cached.mppx
+    const built = buildChannelMppx(publicKey)
+    methods.set(publicKey, built)
+    return built.mppx
+  }
 
   const port = getEnvNumber('MERCHANT_PORT', 8787)
 
@@ -111,7 +167,7 @@ export async function startChannelServer(): Promise<{
         const auth = req.headers.authorization
         if (!auth) {
           // Advertise: 402 channel challenge with amount "0" (open commits nothing).
-          const handler = mppxFor(merchantPubKey)['xrpl/channel']({
+          const handler = advertiseMppx['xrpl/channel']({
             amount: '0',
             channelId: '',
             recipient: store.address,
@@ -138,7 +194,7 @@ export async function startChannelServer(): Promise<{
           return
         }
 
-        const handler = mppxFor(publicKey)['xrpl/channel']({
+        const handler = methodFor(publicKey)['xrpl/channel']({
           amount: '0',
           channelId: '',
           recipient: store.address,
@@ -181,7 +237,7 @@ export async function startChannelServer(): Promise<{
           return
         }
 
-        const handler = mppxFor(rec.publicKey)['xrpl/channel']({
+        const handler = methodFor(rec.publicKey)['xrpl/channel']({
           amount: priceDrops(ctx),
           channelId: rec.channelId,
           recipient: store.address,
@@ -259,7 +315,10 @@ export async function startChannelServer(): Promise<{
     url,
     ctx,
     close: () =>
-      new Promise<void>((resolve, reject) => server.close((e) => (e ? reject(e) : resolve()))),
+      new Promise<void>((resolve, reject) => {
+        for (const { dispose } of methods.values()) dispose() // stop auto-close sweepers
+        server.close((e) => (e ? reject(e) : resolve()))
+      }),
   }
 }
 

@@ -31,10 +31,14 @@ describe('OWS key isolation', () => {
 
   it('the signer only uses the non-extracting OWS calls', () => {
     const src = readFileSync(join(here, 'ows-xrpl-signer.ts'), 'utf8')
-    // It signs/queries through OWS, never exporting the key.
-    expect(src).toContain('signAndSend')
+    // It signs through OWS via signHash (the only token-compatible primitive) and
+    // broadcasts the signed blob itself — never exporting the key.
     expect(src).toContain('signHash')
     expect(src).toContain('getWallet')
     expect(src).not.toContain('exportWallet')
+    // It must not IMPORT signAndSend/signTransaction (they reject the policy-bound
+    // token with InvalidSecretKey). Check the import line, not prose mentions.
+    expect(src).not.toMatch(/import\b[^\n]*\bsignAndSend\b/)
+    expect(src).not.toMatch(/import\b[^\n]*\bsignTransaction\b/)
   })
 })

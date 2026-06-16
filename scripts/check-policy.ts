@@ -72,7 +72,8 @@ async function main(): Promise<void> {
     Amount: '30000000',
   })
 
-  // 4. PaymentChannelCreate locking 30 XRP (> cap) — a tx type the policy does NOT decode.
+  // 4. PaymentChannelCreate locking 30 XRP (> cap) — a recoverable lock the policy
+  //    intentionally does NOT gate as spend (the channel capacity bounds the real spend).
   results['PaymentChannelCreate 30 XRP (> cap)'] = await attempt(
     signer,
     'probe: PayChannel 30 XRP',
