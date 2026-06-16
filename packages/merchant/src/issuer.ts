@@ -33,9 +33,14 @@ export function startIssuerLoop(ctx: MerchantContext): () => void {
   return () => clearInterval(timer)
 }
 
-async function releaseOne(ctx: MerchantContext): Promise<void> {
+/**
+ * Create one new permissioned RWA MPT issuance and record it in inventory.
+ * Shared by the ongoing loop and the channel server (which releases on demand,
+ * once a payment channel is open). Returns the new issuance id.
+ */
+export async function releaseOne(ctx: MerchantContext): Promise<string> {
   const { wallet, store, net, cfg, log } = ctx
-  log.step('releasing a new RWA issuance (ongoing)')
+  log.step('releasing a new RWA issuance')
   const { mpt, hash } = await wallet.createToken({
     assetScale: cfg.asset.assetScale,
     maximumAmount: '1000000000000',
@@ -51,4 +56,5 @@ async function releaseOne(ctx: MerchantContext): Promise<void> {
   })
   ctx.persist()
   log.txn('MPTokenIssuanceCreate (ongoing)', hash, cfg.network.explorerTx?.(hash))
+  return mpt.mpt_issuance_id
 }

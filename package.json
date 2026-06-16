@@ -20,7 +20,8 @@
     "check:testnet": "tsx scripts/check-testnet.ts",
     "demo": "tsx scripts/demo.ts",
     "sdk:vendor": "tsx scripts/vendor-sdk.ts",
-    "check:channel": "tsx scripts/check-channel.ts"
+    "check:channel": "tsx scripts/check-channel.ts",
+    "merchant:channel": "tsx packages/merchant/src/channel-server.ts"
   },
   "dependencies": {
     "@rwa/agent": "workspace:*",
