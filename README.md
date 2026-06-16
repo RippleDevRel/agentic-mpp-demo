@@ -1,5 +1,10 @@
 # Autonomous RWA Buyer Agent over MPP on XRPL
 
+[![Built with xrpl-mpp-sdk](https://img.shields.io/badge/built%20with-xrpl--mpp--sdk-2b6cb0)](https://github.com/krkmu/xrpl-mpp-sdk)
+[![Custody: Open Wallet Standard](https://img.shields.io/badge/custody-Open%20Wallet%20Standard-2f855a)](https://github.com/open-wallet-standard/core)
+[![Ledger: XRPL](https://img.shields.io/badge/ledger-XRPL%20(testnet)-1a202c)](https://xrpl.org)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-555)](./LICENSE)
+
 > ⚠️ **Disclaimer:** This code is provided as is, it's a prototype. It has not been
 > audited, there is no guarantee that it will be maintained, and it should be considered
 > for test and educational purposes only — not for Mainnet or any deployment that handles
@@ -501,34 +506,6 @@ wherever `OWS_VAULT_PATH` points. For a real deployment, harden in this order:
 In short: today the agent *cannot* obtain or misuse the key, but the key still shares the
 agent's process. Production isolation = a separate signer service + secrets management +
 a policy scoped to the deployment.
-
-## Dependencies
-
-Runtime:
-
-| Package | Version | Role |
-| --- | --- | --- |
-| [`xrpl`](https://github.com/XRPLF/xrpl.js) | `^4` | XRPL client + tx encode/sign/hash primitives (also our broadcast path) |
-| [`mppx`](https://www.npmjs.com/package/mppx) | `^0.7` | Machine Payments Protocol — the 402 `Challenge` / `Credential` envelope |
-| [`xrpl-mpp-sdk`](https://github.com/krkmu/xrpl-mpp-sdk) | `^0.1` | XRPL MPP methods (charge + channel, server/client) + helpers (RLUSD, reserves, tokens). **Not yet on npm — vendored** (see `scripts/vendor-sdk.ts`) |
-| [`@open-wallet-standard/core`](https://github.com/open-wallet-standard/core) | `^1.3.2` | OWS vault: key custody, policies, API tokens, `signHash` |
-| `@open-wallet-standard/adapters` | `^1.3.2` | OWS chain adapters |
-| [`@anthropic-ai/claude-agent-sdk`](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) | `^0.3` | Model-driven tool-use loop (rails / minimal agents) |
-| [`@noble/curves`](https://github.com/paulmillr/noble-curves) | `^1.6` | secp256k1 ECDSA — recover the OWS public key + assemble signatures |
-| [`zod`](https://github.com/colinhacks/zod) | `^4` | Tool-argument schemas |
-
-Dev / tooling:
-
-| Package | Version | Role |
-| --- | --- | --- |
-| [`@biomejs/biome`](https://biomejs.dev) | `^2.4` | Lint + format |
-| [`tsup`](https://tsup.egoist.dev) | `^8` | Build (the CI buildability gate) |
-| [`tsx`](https://github.com/privatenumber/tsx) | `^4` | Run TypeScript directly (dev + scripts) |
-| [`typescript`](https://www.typescriptlang.org) | `^5.6` | Types / `tsc --noEmit` typecheck |
-| [`vitest`](https://vitest.dev) | `^2.1` | Unit tests |
-| `@types/node` | `^20` | Node typings |
-
-Toolchain: **pnpm** workspace, **Node ≥ 22.13** (pinned via `packageManager`/`engines`).
 
 ## License
 
