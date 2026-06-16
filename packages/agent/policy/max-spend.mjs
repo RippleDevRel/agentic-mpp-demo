@@ -2,15 +2,20 @@
 /**
  * OWS executable policy: cap the XRP an agent transaction may spend.
  *
- * OWS runs this BEFORE decrypting the key and signing. It pipes the PolicyContext
- * JSON on stdin (chain_id, wallet_id, api_key_id, transaction:{to,value,raw}, ...,
- * plus our policy_config) and reads {"allow":bool,"reason"?} from stdout. A
- * non-zero exit or {"allow":false} blocks the signature — so this cap is enforced
- * at the signing boundary, not just in the agent process.
+ * OWS runs this BEFORE decrypting the key and signing. It pipes a PolicyContext
+ * JSON on stdin and reads {"allow":bool,"reason"?} from stdout; {"allow":false}
+ * (or a non-zero exit) blocks the signature — enforcement at the signing boundary.
  *
- * Cap is PER TRANSACTION (OWS does not yet track cumulative/rolling spend).
- * Money only moves via a decodable XRPL tx; hash signs (pubkey recovery) and
- * non-XRP-outflow txs (TrustSet, MPTokenAuthorize, IOU payments) are allowed.
+ * The tx blob is at `transaction.raw_hex` (NOT `transaction.raw`). Getting this
+ * field name wrong makes the policy fail open (no `raw` → "allow") — i.e. the cap
+ * silently does nothing. Tested live against OWS.
+ *
+ * Cap is PER TRANSACTION and targets IRREVERSIBLE native-XRP outflow: a Payment
+ * (Amount/SendMax) or an OfferCreate (native TakerGets). A PaymentChannelCreate
+ * deposit is a recoverable LOCK (not a terminal spend — the real spend is the
+ * streamed vouchers, bounded by the channel capacity the operator sets), so it is
+ * not gated here. Hash signs (pubkey recovery / channel claims) and non-XRP-outflow
+ * txs (TrustSet, MPTokenAuthorize, IOU payments) carry no native XRP and are allowed.
  */
 import { decode } from 'xrpl'
 
@@ -34,28 +39,29 @@ async function readStdin() {
 const ctx = await readStdin()
   .then((s) => JSON.parse(s))
   .catch(() => null)
-if (!ctx) allow() // unreadable context: fail open only for non-tx (money needs a valid tx)
+if (!ctx) allow() // unreadable context → cannot evaluate a spend; nothing to gate
 
 const capXrp = Number(ctx.policy_config?.maxSpendXrp ?? 50)
 const capDrops = capXrp * 1_000_000
 
-const raw = ctx.transaction?.raw
-if (!raw) allow() // not a transaction signing request (e.g. hash sign for pubkey recovery)
+// OWS passes the encoded transaction blob here. Absent for hash-signing requests.
+const rawHex = ctx.transaction?.raw_hex
+if (!rawHex) allow() // not a tx signing request (e.g. signHash for pubkey recovery / claims)
 
 let tx
 try {
-  tx = decode(raw)
+  tx = decode(rawHex)
 } catch {
-  allow() // not a decodable XRPL tx → cannot move funds
+  allow() // not a decodable XRPL tx → cannot move native XRP
 }
 
 const fee = drops(tx.Fee)
 let spend = fee
 const kind = tx.TransactionType
-if (tx.TransactionType === 'Payment') {
+if (kind === 'Payment') {
   // XRP leaves via SendMax (conversion) or a native Amount.
   spend = Math.max(drops(tx.SendMax), drops(tx.Amount)) + fee
-} else if (tx.TransactionType === 'OfferCreate') {
+} else if (kind === 'OfferCreate') {
   // XRP leaves via TakerGets when it is native (drops string).
   spend = drops(tx.TakerGets) + fee
 }

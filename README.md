@@ -66,12 +66,22 @@ signing boundary** — a misbehaving (or model-driven) agent cannot get a non-co
 transaction signed:
 
 - **XRPL only** + a time-bounded API token (declarative rules).
-- **Per-transaction spend cap** of `MAX_SPEND` XRP, via an OWS *executable* policy
-  (`packages/agent/policy/max-spend.mjs`) that decodes the tx and denies on overflow.
+- **Per-transaction spend cap** of `MAX_SPEND` XRP on irreversible native-XRP outflow, via
+  an OWS *executable* policy (`packages/agent/policy/max-spend.mjs`) that decodes the tx and
+  denies overflow on a `Payment` (Amount/SendMax) or an `OfferCreate` (native TakerGets). A
+  `PaymentChannelCreate` deposit is a recoverable lock (not a terminal spend), so it is not
+  gated — the channel capacity bounds the streamed spend instead.
 
 `MAX_SPEND` is enforced **solely by the OWS policy** at signing, in both modes — the app
 never gates spend in code (it only reads the cap to provision funding and to inform the
-model). (OWS has no cumulative/rolling limit yet, so the cap is per-transaction.)
+model). (OWS has no cumulative/rolling limit yet, so the cap is per-transaction; OWS does
+expose a `spending.daily_total`, so a daily cap is a possible add.)
+
+> **Verify it yourself:** `MAX_SPEND=10 pnpm check:policy` opens a fresh capped wallet,
+> funds it above the cap, and tries to sign over-cap txs via the policy-bound token (the
+> agent's only signing path). Over-cap `Payment`/`OfferCreate` are denied; an under-cap one
+> is allowed. The executable reads the tx at `transaction.raw_hex` — using the wrong field
+> name silently fails open, so this probe and the unit test pin that contract.
 
 ## How OWS works (key storage, policy, signing)
 
@@ -396,10 +406,11 @@ CHANNEL_XRP=50 pnpm agent:channel
 pnpm check:channel   # isolated live check: OWS opens a channel + signs a verifiable voucher
 ```
 
-> Guardrail note: the OWS executable spend-cap policy bounds `Payment`/`OfferCreate` XRP
-> outflow, not `PaymentChannelCreate` — in channel mode the **channel capacity itself** is the
-> hard spend bound (vouchers above it are unredeemable). A future policy rule could also cap
-> the channel deposit.
+> Guardrail note: the per-tx `MAX_SPEND` policy gates irreversible XRP outflow
+> (`Payment`/`OfferCreate`), not the `PaymentChannelCreate` deposit — that is a recoverable
+> lock, and the streamed spend is bounded by the **channel capacity** the operator sets
+> (`CHANNEL_XRP`; a voucher above it is unredeemable). Vouchers are off-ledger claims (signed
+> via `signHash`), which the per-tx policy does not see — the channel capacity is their bound.
 
 ## Environment reference (`.env.example`)
 

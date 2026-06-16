@@ -12,6 +12,7 @@ export default defineConfig({
     'agent/channel': 'packages/agent/src/channel.ts',
     'scripts/check-testnet': 'scripts/check-testnet.ts',
     'scripts/check-channel': 'scripts/check-channel.ts',
+    'scripts/check-policy': 'scripts/check-policy.ts',
     'scripts/demo': 'scripts/demo.ts',
   },
   outDir: 'dist',

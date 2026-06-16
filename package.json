@@ -22,7 +22,8 @@
     "sdk:vendor": "tsx scripts/vendor-sdk.ts",
     "check:channel": "tsx scripts/check-channel.ts",
     "merchant:channel": "tsx packages/merchant/src/channel-server.ts",
-    "agent:channel": "tsx packages/agent/src/channel.ts"
+    "agent:channel": "tsx packages/agent/src/channel.ts",
+    "check:policy": "tsx scripts/check-policy.ts"
   },
   "dependencies": {
     "@rwa/agent": "workspace:*",
