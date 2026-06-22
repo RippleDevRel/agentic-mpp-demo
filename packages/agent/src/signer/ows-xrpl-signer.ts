@@ -2,9 +2,12 @@
  * OWS signing bridge for XRPL — every agent write goes through here. OWS does
  * not expose the account public key, so this recovers it (ECDSA recovery), then
  * signs the tx's signing hash via OWS `signHash` and broadcasts the assembled blob
- * itself via xrpl.js. (`signHash` is the only OWS primitive that accepts our
- * policy-bound token; `signAndSend`/`signTransaction` reject it.) The private key
- * never leaves the vault. See the OwsXrplSigner class doc for the step-by-step.
+ * itself via xrpl.js. One uniform `signHash` path covers both broadcast txs and the
+ * channel `open` blob (which the merchant submits, so it must not be broadcast here),
+ * and the recovered pubkey is reused as the channel public key. The private key never
+ * leaves the vault. (OWS ≤1.3.2 also rejected the policy-bound token on
+ * `signAndSend`/`signTransaction` — fixed in 1.4.2 — but the pubkey is still not
+ * exposed, so the recovery stays.) See the OwsXrplSigner class doc for the steps.
  */
 import { createHash } from 'node:crypto'
 import type { Logger, NetworkConfig } from '@agentic-mpp-demo-xrpl/shared'
@@ -60,9 +63,9 @@ export interface SubmitResult {
  * never enters this process. OWS does not expose the public key, so we recover the
  * secp256k1 public key from a `signHash` signature (matching the OWS address) and
  * set it as `SigningPubKey`. We then sign the tx's signing hash via `signHash` and
- * broadcast the assembled blob ourselves via xrpl.js — `signHash` is the only OWS
- * primitive that accepts the policy-bound API token (`signAndSend`/`signTransaction`
- * reject it with `InvalidSecretKey`, notably for reused wallets).
+ * broadcast the assembled blob ourselves via xrpl.js. The recovered pubkey is reused
+ * as the channel public key, and the same path also produces the channel `open` blob
+ * without broadcasting — hence one uniform signHash path rather than `signAndSend`.
  */
 export class OwsXrplSigner {
   private readonly o: OwsXrplSignerOptions
@@ -144,11 +147,11 @@ export class OwsXrplSigner {
 
   /**
    * Autofill + OWS-sign a tx into a signed blob, via `signHash`. This is the
-   * shared signing core for both signToBlob and signAndSubmit. `signHash` is the
-   * ONLY OWS primitive that works with our policy-bound API token — `signAndSend`
-   * and `signTransaction` reject it with `InvalidSecretKey` (notably for reused/
-   * adopted wallets). The XRPL single-sign hash is `sha512half(encodeForSigning(tx))`
-   * with `SigningPubKey` (recovered) set; we sign that digest and assemble the blob.
+   * shared signing core for both signToBlob and signAndSubmit. The XRPL single-sign
+   * hash is `sha512half(encodeForSigning(tx))` with `SigningPubKey` (the recovered
+   * key) set; we sign that digest via `signHash` and assemble the blob. Using
+   * `signHash` (not `signAndSend`) keeps one path that also yields the unbroadcast
+   * channel `open` blob and reuses the recovered pubkey OWS won't expose.
    */
   private async buildSignedBlob(
     client: Client,

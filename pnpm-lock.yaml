@@ -55,11 +55,11 @@ importers:
         specifier: ^1.6.0
         version: 1.9.7
       '@open-wallet-standard/adapters':
-        specifier: ^1.3.2
-        version: 1.3.2(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))
+        specifier: ^1.4.2
+        version: 1.4.2(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))
       '@open-wallet-standard/core':
-        specifier: ^1.3.2
-        version: 1.3.2
+        specifier: ^1.4.2
+        version: 1.4.2
       mppx:
         specifier: ^0.7.0
         version: 0.7.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))
@@ -735,8 +735,8 @@ packages:
     resolution: {integrity: sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==}
     engines: {node: '>= 20.19.0'}
 
-  '@open-wallet-standard/adapters@1.3.2':
-    resolution: {integrity: sha512-49GOsSNcxPmP4ETv4nuPkj7prYFdxO9bdaVHP24vyeV19Wl6iuKgHtjzXyiX/2N0pRN/XVP/yGEmqypFeVNtkQ==}
+  '@open-wallet-standard/adapters@1.4.2':
+    resolution: {integrity: sha512-xXKBRmfNltnJH6BhTyTlpCExWga0bD16GNlx18sr7FbvIOh51CpF+6tn4z0lTNoz7VNAVM/jCS4UNL66V0II5w==}
     peerDependencies:
       '@solana/web3.js': '>=1.0.0'
       '@tetherto/wdk-wallet': '>=1.0.0-beta.0'
@@ -749,28 +749,28 @@ packages:
       viem:
         optional: true
 
-  '@open-wallet-standard/core-darwin-arm64@1.3.2':
-    resolution: {integrity: sha512-rvUsGU8eZtIMYFJ047nFKS79ajJeYCydvvh2B6bX0UUGf2NJZ4wUnxGqijxPiflz2xqzvbHXYZNzy3MIO4+fDQ==}
+  '@open-wallet-standard/core-darwin-arm64@1.4.2':
+    resolution: {integrity: sha512-0bu36U0vGLqIn7rxHAJNA253VvV9xt+AbWLWf8NHxiDoLaZX0RSVyBd79g80Pyi6N9/KkgltDWAq4hfruOaz9A==}
     cpu: [arm64]
     os: [darwin]
 
-  '@open-wallet-standard/core-darwin-x64@1.3.2':
-    resolution: {integrity: sha512-a6u3CvWZY8sC1S92AMGnO1WFlMW3m38+3/IoKzhxcFvD8rVY0OA0ebH6qzYLT96/TaouXDwmMQV6yQmb1IjfzQ==}
+  '@open-wallet-standard/core-darwin-x64@1.4.2':
+    resolution: {integrity: sha512-RvFMd6PhOT4UDH0NnybYiouLcjH9hPaP0i0I42R/mGnqNZq/ZwQ2h7jhFRu8hj213xV4LYfT2mWCnSp5eviMMg==}
     cpu: [x64]
     os: [darwin]
 
-  '@open-wallet-standard/core-linux-arm64-gnu@1.3.2':
-    resolution: {integrity: sha512-wzyd7euZ5qvDr8dHf3eG2XP7iFgMmBUo35U7cWMLs6Yqjqz103SEjtMfNJEedZRb62f8P3Xhp9jdRLzaJvjk5g==}
+  '@open-wallet-standard/core-linux-arm64-gnu@1.4.2':
+    resolution: {integrity: sha512-srJiGO5A6mc1j3QU4Br3/sUZbikRi4T9c1wZdT8MBZcSFiJ5MONqyduMHQhfbd60jTJK73MeqDFXdKaBnxU9qg==}
     cpu: [arm64]
     os: [linux]
 
-  '@open-wallet-standard/core-linux-x64-gnu@1.3.2':
-    resolution: {integrity: sha512-pVtyEP8EqR3rjqdBDCRuB9Rd4xs8+11gRVtWidwPeFz5QPq3c9VGZjGQtTZoiZBHCxKaq5pTQjC78J5lVuA0hg==}
+  '@open-wallet-standard/core-linux-x64-gnu@1.4.2':
+    resolution: {integrity: sha512-0Hqsv/qu/YAlQ9oKJ6c1ZwFhbzf4O58OSb9EK7v6Ji0Ih+SS4VX4X3shuikjQuBD3sNXYer5pLLA0OSGNYmFxw==}
     cpu: [x64]
     os: [linux]
 
-  '@open-wallet-standard/core@1.3.2':
-    resolution: {integrity: sha512-Dk8bB9G5PjJfNzAqJd9WT9OfqrrSXRc3gA9+BCaY2qirlNrCkIAZCHaDIE0LnGOAaoSZizR6qnOFbukj+DTzJg==}
+  '@open-wallet-standard/core@1.4.2':
+    resolution: {integrity: sha512-alu69/tEeGYJhC1nyc7EGhJM6oqOU8XQv3S1qYe+LFYU/iHHi7QQrnTvNBesUkosccWf8TRZzhmGluRhaE44KQ==}
     hasBin: true
 
   '@rollup/rollup-android-arm-eabi@4.61.1':
@@ -2208,31 +2208,31 @@ snapshots:
 
   '@noble/hashes@2.2.0': {}
 
-  '@open-wallet-standard/adapters@1.3.2(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))':
+  '@open-wallet-standard/adapters@1.4.2(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))':
     dependencies:
       '@noble/curves': 1.9.7
-      '@open-wallet-standard/core': 1.3.2
+      '@open-wallet-standard/core': 1.4.2
     optionalDependencies:
       viem: 2.52.2(typescript@5.9.3)(zod@4.4.3)
 
-  '@open-wallet-standard/core-darwin-arm64@1.3.2':
+  '@open-wallet-standard/core-darwin-arm64@1.4.2':
     optional: true
 
-  '@open-wallet-standard/core-darwin-x64@1.3.2':
+  '@open-wallet-standard/core-darwin-x64@1.4.2':
     optional: true
 
-  '@open-wallet-standard/core-linux-arm64-gnu@1.3.2':
+  '@open-wallet-standard/core-linux-arm64-gnu@1.4.2':
     optional: true
 
-  '@open-wallet-standard/core-linux-x64-gnu@1.3.2':
+  '@open-wallet-standard/core-linux-x64-gnu@1.4.2':
     optional: true
 
-  '@open-wallet-standard/core@1.3.2':
+  '@open-wallet-standard/core@1.4.2':
     optionalDependencies:
-      '@open-wallet-standard/core-darwin-arm64': 1.3.2
-      '@open-wallet-standard/core-darwin-x64': 1.3.2
-      '@open-wallet-standard/core-linux-arm64-gnu': 1.3.2
-      '@open-wallet-standard/core-linux-x64-gnu': 1.3.2
+      '@open-wallet-standard/core-darwin-arm64': 1.4.2
+      '@open-wallet-standard/core-darwin-x64': 1.4.2
+      '@open-wallet-standard/core-linux-arm64-gnu': 1.4.2
+      '@open-wallet-standard/core-linux-x64-gnu': 1.4.2
 
   '@rollup/rollup-android-arm-eabi@4.61.1':
     optional: true

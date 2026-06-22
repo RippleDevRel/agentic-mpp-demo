@@ -36,8 +36,9 @@ describe('OWS key isolation', () => {
     expect(src).toContain('signHash')
     expect(src).toContain('getWallet')
     expect(src).not.toContain('exportWallet')
-    // It must not IMPORT signAndSend/signTransaction (they reject the policy-bound
-    // token with InvalidSecretKey). Check the import line, not prose mentions.
+    // It signs through a single signHash path (which also yields the unbroadcast
+    // channel `open` blob), so it must not IMPORT signAndSend/signTransaction.
+    // Check the import line, not prose mentions.
     expect(src).not.toMatch(/import\b[^\n]*\bsignAndSend\b/)
     expect(src).not.toMatch(/import\b[^\n]*\bsignTransaction\b/)
   })

@@ -180,12 +180,19 @@ A signed XRPL transaction must carry `SigningPubKey` (the signer's public key) a
    (`sha512half(encodeForSigning(tx))`) via `signHash` and **broadcast the assembled blob
    ourselves via xrpl.js**.
 
-We broadcast ourselves because `signHash` is the only OWS primitive that accepts our
-policy-bound token — `signAndSend`/`signTransaction` reject it with `InvalidSecretKey`
-(notably for reused wallets). The pubkey is cached, `NetworkID` is stripped (networks with
-id ≤ 1024 must omit it), and signing is serialized through a mutex (the account sequence is
-not concurrency-safe). The clean upstream fix would be an external-signer constructor on the
-SDK `Wallet` (`Wallet.fromSigner`).
+This one `signHash` path is uniform: it covers broadcast txs *and* the channel `open` blob
+(which the merchant submits, so it must not be broadcast here), and the recovered pubkey is
+reused as the channel public key + to verify claims. The pubkey is cached, `NetworkID` is
+stripped (networks with id ≤ 1024 must omit it), and signing is serialized through a mutex
+(the account sequence is not concurrency-safe).
+
+> **OWS update (1.4.2):** the [SigningPubKey-injection fix](https://github.com/open-wallet-standard/core/pull/234)
+> means `signTransaction`/`signAndSend` now accept the policy-bound token and inject the
+> pubkey themselves (OWS ≤1.3.2 rejected the token with `InvalidSecretKey`). But OWS still
+> does **not expose the account public key** (`getWallet`/`AccountInfo`), which is what
+> channel mode needs (the `PaymentChannelCreate` PublicKey + claim verification), so the
+> ECDSA recovery stays. The clean upstream fix would be exposing the pubkey (or an
+> external-signer constructor on the SDK `Wallet`, `Wallet.fromSigner`).
 
 ### What the agent can and cannot access
 
@@ -452,10 +459,11 @@ pnpm check:channel   # isolated live check: OWS opens a channel + signs a verifi
 ## Known constraints
 
 1. **Signer integration is the central task.** Resolved by recovering the OWS public
-   key, signing the tx hash via OWS `signHash`, and broadcasting the blob ourselves
-   (`signHash` is the only primitive that accepts the policy-bound token); the MPP leg uses
-   push mode. The clean upstream fix is an external-signer constructor on the SDK `Wallet`
-   (`Wallet.fromSigner`).
+   key (OWS does not expose it), signing the tx hash via OWS `signHash`, and broadcasting
+   the blob ourselves — one uniform path that also yields the unbroadcast channel `open`
+   blob; the MPP leg uses push mode. The clean upstream fix is exposing the account public
+   key (OWS 1.4.2 fixed token signing but not pubkey exposure) or an external-signer
+   constructor on the SDK `Wallet` (`Wallet.fromSigner`).
 2. **RLUSD funding on testnet** is not scriptable, so the agent self-funds in XRP and
    swaps to RLUSD on the existing testnet AMM (no operator liquidity setup).
 3. **RLUSD identifiers — merchant vs agent.** The *merchant* charges in RLUSD using the
