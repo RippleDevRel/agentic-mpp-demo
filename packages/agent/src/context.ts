@@ -14,7 +14,7 @@ import {
 } from '@agentic-mpp-demo-xrpl/shared'
 import type { AcquireDeps } from './pipeline'
 import type { AgentStore } from './state'
-import { ensureAgentWallet } from './tools/wallet'
+import { ensureAgentWallet, type SignerKind } from './tools/wallet'
 
 export interface AgentContext {
   deps: AcquireDeps
@@ -28,8 +28,14 @@ export interface AgentContext {
  * The single runtime input is the seller's service endpoint (MERCHANT_URL) — the
  * agent is NOT given the merchant's ledger address; it learns the payment
  * recipient from each resource's 402 challenge.
+ *
+ * `signerKind` selects the OWS signer: `native` (default — `signAndSend`) for the
+ * ordinary flows, `channel` (the `signHash`/pubkey-recovery signer) for the
+ * payment-channel driver, which needs the public key as a value.
  */
-export async function buildAgentContext(): Promise<AgentContext> {
+export async function buildAgentContext(
+  opts: { signerKind?: SignerKind } = {},
+): Promise<AgentContext> {
   // The agent resolves only the network. It deliberately does NOT resolve a
   // payment currency — it learns currency + issuer from each resource's 402.
   loadEnv()
@@ -37,7 +43,7 @@ export async function buildAgentContext(): Promise<AgentContext> {
   const log = createLogger('agent')
   const summary = new RunSummary()
 
-  const { signer, store } = await ensureAgentWallet(network, log)
+  const { signer, store } = await ensureAgentWallet(network, log, opts.signerKind)
   summary.add('Wallet (OWS, key isolated)', signer.address())
 
   const merchantUrl = getEnv('MERCHANT_URL') ?? 'http://localhost:8787'

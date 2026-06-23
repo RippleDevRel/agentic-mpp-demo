@@ -5,8 +5,8 @@
  * never leaves the vault. XRP-only (PayChannels carry XRP), so no swap/trustline.
  */
 import { type Logger, type NetworkConfig, withClient } from '@agentic-mpp-demo-xrpl/shared'
+import type { XrplSubmitSigner } from '../signer/common'
 import type { ChannelClaim, OwsChannelClaimSigner } from '../signer/ows-channel-signer'
-import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
 
 /** PaymentChannelClaim flag: close the channel (funder only). */
 const TF_CLOSE = 0x00020000
@@ -44,7 +44,7 @@ async function channelIdFromTx(network: NetworkConfig, txHash: string): Promise<
  * merchant can verify every claim. Returns the channel id (from tx metadata).
  */
 export async function openChannel(
-  signer: OwsXrplSigner,
+  signer: XrplSubmitSigner,
   channelSigner: OwsChannelClaimSigner,
   network: NetworkConfig,
   params: { destination: string; amountDrops: string; settleDelay?: number },
@@ -93,7 +93,7 @@ export function signVoucher(
  * after which the unspent XRP returns to the agent. Signed via OWS.
  */
 export async function closeChannel(
-  signer: OwsXrplSigner,
+  signer: XrplSubmitSigner,
   channelId: string,
   log: Logger,
 ): Promise<{ hash: string }> {

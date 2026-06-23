@@ -29,17 +29,29 @@ describe('OWS key isolation', () => {
     }
   })
 
-  it('the signer only uses the non-extracting OWS calls', () => {
+  it('the channel signer only uses the non-extracting OWS calls', () => {
     const src = readFileSync(join(here, 'ows-xrpl-signer.ts'), 'utf8')
-    // It signs through OWS via signHash (the only token-compatible primitive) and
-    // broadcasts the signed blob itself — never exporting the key.
+    // The channel signer signs through OWS via signHash (so it can recover the
+    // pubkey + build the unbroadcast `open` blob) and broadcasts the signed blob
+    // itself — never exporting the key.
     expect(src).toContain('signHash')
     expect(src).toContain('getWallet')
     expect(src).not.toContain('exportWallet')
-    // It signs through a single signHash path (which also yields the unbroadcast
-    // channel `open` blob), so it must not IMPORT signAndSend/signTransaction.
-    // Check the import line, not prose mentions.
+    // Channel mode is the signHash path only — it must not import signAndSend/
+    // signTransaction. Check the import line, not prose mentions.
     expect(src).not.toMatch(/import\b[^\n]*\bsignAndSend\b/)
     expect(src).not.toMatch(/import\b[^\n]*\bsignTransaction\b/)
+  })
+
+  it('the native signer signs+broadcasts via OWS without exporting the key', () => {
+    const src = readFileSync(join(here, 'native-ows-signer.ts'), 'utf8')
+    // The default (non-channel) signer uses OWS signAndSend: OWS injects the
+    // SigningPubKey, signs, and broadcasts — the key never leaves the vault.
+    expect(src).toContain('signAndSend')
+    expect(src).toContain('getWallet')
+    expect(src).not.toContain('exportWallet')
+    // It must not need the pubkey: no recovery, no signHash here.
+    expect(src).not.toContain('signHash')
+    expect(src).not.toContain('recoverPublicKey')
   })
 })

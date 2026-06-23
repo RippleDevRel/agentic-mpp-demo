@@ -1,20 +1,28 @@
 /**
- * OWS signing bridge for XRPL — every agent write goes through here. OWS does
- * not expose the account public key, so this recovers it (ECDSA recovery), then
- * signs the tx's signing hash via OWS `signHash` and broadcasts the assembled blob
- * itself via xrpl.js. One uniform `signHash` path covers both broadcast txs and the
- * channel `open` blob (which the merchant submits, so it must not be broadcast here),
- * and the recovered pubkey is reused as the channel public key. The private key never
- * leaves the vault. (OWS ≤1.3.2 also rejected the policy-bound token on
- * `signAndSend`/`signTransaction` — fixed in 1.4.2 — but the pubkey is still not
- * exposed, so the recovery stays.) See the OwsXrplSigner class doc for the steps.
+ * OWS signing bridge for XRPL — CHANNEL MODE ONLY. Every NON-channel write uses
+ * NativeOwsSigner (OWS 1.4.2 `signAndSend`, no pubkey needed). This signer exists
+ * because payment channels need the account public key as a VALUE — for
+ * `PaymentChannelCreate.PublicKey` and to verify off-ledger claims — and OWS does
+ * not expose it. So this recovers the secp256k1 pubkey (ECDSA recovery from a
+ * `signHash` signature), sets it as `SigningPubKey`, signs the tx's signing hash
+ * via `signHash`, and broadcasts the assembled blob itself via xrpl.js. The same
+ * path also yields the channel `open` blob WITHOUT broadcasting (the merchant
+ * submits it), and `signDigest` signs off-ledger claims. The private key never
+ * leaves the vault. (Exposing the pubkey upstream would let channel mode drop
+ * the recovery and use the native signer like everything else.)
  */
 import { createHash } from 'node:crypto'
-import type { Logger, NetworkConfig } from '@agentic-mpp-demo-xrpl/shared'
 import { withClient } from '@agentic-mpp-demo-xrpl/shared'
 import { secp256k1 } from '@noble/curves/secp256k1'
 import { getWallet, signHash } from '@open-wallet-standard/core'
-import { type Client, encode, encodeForSigning, hashes, type SubmittableTransaction } from 'xrpl'
+import { type Client, encode, encodeForSigning, hashes } from 'xrpl'
+import {
+  type OwsSignerOptions,
+  type SignableTx,
+  type SubmitResult,
+  waitValidated,
+  type XrplSubmitSigner,
+} from './common'
 
 const XRPL_ALPHABET = 'rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz'
 
@@ -41,34 +49,17 @@ function addressFromPubKey(pubHex: string): string {
   return out
 }
 
-export interface OwsXrplSignerOptions {
-  /** OWS wallet name or id. */
-  walletName: string
-  /** Owner passphrase OR an `ows_key_...` agent token (token = policy-enforced). */
-  credential: string
-  /** OWS vault root (default ~/.ows). */
-  vaultPath?: string
-  network: NetworkConfig
-  log: Logger
-}
-
-export interface SubmitResult {
-  hash: string
-  engineResult: string
-  validated: boolean
-}
-
 /**
- * Signs and submits arbitrary XRPL transactions through OWS so the private key
- * never enters this process. OWS does not expose the public key, so we recover the
- * secp256k1 public key from a `signHash` signature (matching the OWS address) and
- * set it as `SigningPubKey`. We then sign the tx's signing hash via `signHash` and
- * broadcast the assembled blob ourselves via xrpl.js. The recovered pubkey is reused
- * as the channel public key, and the same path also produces the channel `open` blob
- * without broadcasting — hence one uniform signHash path rather than `signAndSend`.
+ * Channel-mode signer: signs + submits XRPL transactions through OWS so the
+ * private key never enters this process, AND exposes the recovered public key
+ * (`publicKey()`), an unbroadcast blob builder (`signToBlob`), and a raw digest
+ * signer (`signDigest`) that channel mode needs. OWS does not expose the public
+ * key, so we recover the secp256k1 key from a `signHash` signature (matching the
+ * OWS address), set it as `SigningPubKey`, sign the tx's signing hash via
+ * `signHash`, and broadcast the assembled blob ourselves via xrpl.js.
  */
-export class OwsXrplSigner {
-  private readonly o: OwsXrplSignerOptions
+export class OwsXrplSigner implements XrplSubmitSigner {
+  private readonly o: OwsSignerOptions
   private cachedAddress?: string
   private cachedPubKey?: string
   /** Serializes OWS signing: the native signer + per-account sequence are not
@@ -76,7 +67,7 @@ export class OwsXrplSigner {
    * so all signing/submitting runs one at a time. */
   private queue: Promise<unknown> = Promise.resolve()
 
-  constructor(options: OwsXrplSignerOptions) {
+  constructor(options: OwsSignerOptions) {
     this.o = options
   }
 
@@ -155,7 +146,7 @@ export class OwsXrplSigner {
    */
   private async buildSignedBlob(
     client: Client,
-    tx: Partial<SubmittableTransaction> & { TransactionType: string },
+    tx: SignableTx,
   ): Promise<{ blob: string; hash: string }> {
     const prepared = (await client.autofill({
       Account: this.address(),
@@ -175,9 +166,7 @@ export class OwsXrplSigner {
 
   /** Sign a tx into a blob WITHOUT broadcasting — for the MPP channel `open`
    * credential, whose `PaymentChannelCreate` blob the merchant submits. */
-  async signToBlob(
-    tx: Partial<SubmittableTransaction> & { TransactionType: string },
-  ): Promise<{ blob: string; hash: string }> {
+  async signToBlob(tx: SignableTx): Promise<{ blob: string; hash: string }> {
     return this.runExclusive(() =>
       withClient(this.o.network.rpcUrl, (client: Client) => this.buildSignedBlob(client, tx)),
     )
@@ -189,10 +178,7 @@ export class OwsXrplSigner {
    * recovered key; `NetworkID` is stripped (testnet/local network id <= 1024
    * must omit it). Throws if the tx does not reach `tesSUCCESS`.
    */
-  async signAndSubmit(
-    tx: Partial<SubmittableTransaction> & { TransactionType: string },
-    opts: { label?: string } = {},
-  ): Promise<SubmitResult> {
+  async signAndSubmit(tx: SignableTx, opts: { label?: string } = {}): Promise<SubmitResult> {
     const label = opts.label ?? tx.TransactionType
     // Serialize: even if the model invokes signing tools concurrently, OWS signing
     // and the account sequence are handled one tx at a time.
@@ -207,7 +193,7 @@ export class OwsXrplSigner {
         if (prelim && !/^(tes|ter|tec)/.test(prelim)) {
           throw new Error(`${label} rejected on submit: ${prelim} (${hash})`)
         }
-        const result = await this.waitValidated(client, hash)
+        const result = await waitValidated(client, hash)
         this.o.log.txn(label, hash, this.o.network.explorerTx?.(hash))
         if (result.engineResult !== 'tesSUCCESS') {
           throw new Error(`${label} failed on-chain: ${result.engineResult} (${hash})`)
@@ -215,23 +201,5 @@ export class OwsXrplSigner {
         return result
       })
     })
-  }
-
-  private async waitValidated(client: Client, hash: string, attempts = 25): Promise<SubmitResult> {
-    for (let i = 0; i < attempts; i++) {
-      const r = await client.request({ command: 'tx', transaction: hash }).catch(() => null)
-      const res = r?.result as
-        | { validated?: boolean; meta?: { TransactionResult?: string } }
-        | undefined
-      if (res?.validated) {
-        return {
-          hash,
-          engineResult: res.meta?.TransactionResult ?? 'unknown',
-          validated: true,
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-    }
-    throw new Error(`tx ${hash} not validated within timeout`)
   }
 }

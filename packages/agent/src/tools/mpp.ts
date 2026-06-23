@@ -7,7 +7,7 @@
 import type { Logger, NetworkConfig } from '@agentic-mpp-demo-xrpl/shared'
 import { Challenge, Credential } from 'mppx'
 import type { Amount } from 'xrpl'
-import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
+import type { XrplSubmitSigner } from '../signer/common'
 
 export interface PaymentOutcome {
   paymentHash: string
@@ -70,7 +70,7 @@ export async function quoteResource(url: string, log: Logger): Promise<ResourceQ
  * leaves OWS, and the SDK server still verifies the on-chain payment.
  */
 export async function payViaMpp(
-  signer: OwsXrplSigner,
+  signer: XrplSubmitSigner,
   network: NetworkConfig,
   url: string,
   log: Logger,

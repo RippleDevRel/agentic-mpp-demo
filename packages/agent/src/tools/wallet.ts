@@ -2,7 +2,7 @@
  * OWS wallet provisioning: create (or reuse) the vault wallet whose key is
  * generated inside OWS, bind it with a policy (XRPL-only, expiry, executable
  * spend cap), and mint the policy-enforced API token the agent signs with.
- * Returns an OwsXrplSigner plus the persisted store.
+ * Returns a signer (native by default, or the channel signer) plus the store.
  */
 import { chmodSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -20,8 +20,21 @@ import {
   getWallet,
   listWallets,
 } from '@open-wallet-standard/core'
+import type { OwsSignerOptions, XrplSubmitSigner } from '../signer/common'
+import { NativeOwsSigner } from '../signer/native-ows-signer'
 import { OwsXrplSigner } from '../signer/ows-xrpl-signer'
 import { type AgentStore, loadAgentStore, saveAgentStore } from '../state'
+
+/**
+ * Which OWS signer to build. `native` (default) uses OWS 1.4.2 `signAndSend` for
+ * every ordinary write. `channel` uses the `signHash` + pubkey-recovery signer,
+ * which payment-channel mode needs (the pubkey as a value for the channel + claims).
+ */
+export type SignerKind = 'native' | 'channel'
+
+function makeSigner(kind: SignerKind, options: OwsSignerOptions): XrplSubmitSigner {
+  return kind === 'channel' ? new OwsXrplSigner(options) : new NativeOwsSigner(options)
+}
 
 /** OWS uses the `xrpl:mainnet` chain id for XRPL (addresses are network-agnostic). */
 const XRPL_CHAIN_ID = 'xrpl:mainnet'
@@ -56,7 +69,7 @@ function maxSpendPolicyExecutable(): string {
 }
 
 export interface AgentWallet {
-  signer: OwsXrplSigner
+  signer: XrplSubmitSigner
   address: string
   store: AgentStore
 }
@@ -68,7 +81,11 @@ export interface AgentWallet {
  * expires, and caps per-transaction XRP spend at MAX_SPEND via an OWS executable
  * policy (enforced on-device before signing — see policy/max-spend.mjs).
  */
-export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Promise<AgentWallet> {
+export async function ensureAgentWallet(
+  network: NetworkConfig,
+  log: Logger,
+  kind: SignerKind = 'native',
+): Promise<AgentWallet> {
   const vaultPath = getEnv('OWS_VAULT_PATH')
   const walletName = getEnv('OWS_WALLET_NAME') ?? 'agent-treasury'
 
@@ -78,10 +95,10 @@ export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Pr
     // Backfill for stores written before maxSpendXrp was persisted; the active
     // enforcement is the policy created earlier, so keep the env value as a hint.
     existing.maxSpendXrp ??= getEnvNumber('MAX_SPEND', 50)
-    const signer = new OwsXrplSigner({
+    const signer = makeSigner(kind, {
       walletName: existing.walletName,
       credential: existing.token,
-      vaultPath,
+      vaultPath: vaultPath ?? undefined,
       network,
       log,
     })
@@ -150,6 +167,12 @@ export async function ensureAgentWallet(network: NetworkConfig, log: Logger): Pr
   }
   saveAgentStore(store)
 
-  const signer = new OwsXrplSigner({ walletName, credential: key.token, vaultPath, network, log })
+  const signer = makeSigner(kind, {
+    walletName,
+    credential: key.token,
+    vaultPath: vaultPath ?? undefined,
+    network,
+    log,
+  })
   return { signer, address: xrpl.address, store }
 }

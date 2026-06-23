@@ -17,7 +17,7 @@ export function currencyLabel(code: string): string {
  * Imports the RLUSD issuer/currency from the SDK constant so they stay in sync,
  * and fires the issuer-discrepancy warning if the env issuer disagrees.
  */
-export function resolvePaymentCurrency(_network: NetworkConfig): PaymentCurrency {
+export function resolvePaymentCurrency(): PaymentCurrency {
   const kind = (getEnv('PAYMENT_CURRENCY') ?? 'RLUSD').toUpperCase() as PaymentCurrencyKind
 
   if (kind === 'XRP') {

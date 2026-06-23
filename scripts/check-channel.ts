@@ -8,12 +8,16 @@
 import { dropsToXrp, verifyPaymentChannelClaim, Wallet } from 'xrpl'
 import { buildAgentContext } from '../packages/agent/src/context'
 import { OwsChannelClaimSigner } from '../packages/agent/src/signer/ows-channel-signer'
+import { OwsXrplSigner } from '../packages/agent/src/signer/ows-xrpl-signer'
 import { openChannel, signVoucher } from '../packages/agent/src/tools/channel'
 import { ensureFunded } from '../packages/agent/src/tools/funding'
 
 async function main(): Promise<void> {
-  const { deps } = await buildAgentContext()
+  // Channel mode uses the OWS pubkey-recovery signer (native OWS can't expose it).
+  const { deps } = await buildAgentContext({ signerKind: 'channel' })
   const { signer, network, log } = deps
+  if (!(signer instanceof OwsXrplSigner))
+    throw new Error('channel check requires the recovery signer')
 
   // Fund the agent enough for a 50 XRP channel + reserves + fees.
   await ensureFunded(signer.address(), network, { ownerObjects: 1, swapBudgetXrp: '55' }, log)

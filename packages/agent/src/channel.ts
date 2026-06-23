@@ -15,6 +15,7 @@ import { Challenge, Credential } from 'mppx'
 import { toDrops } from 'xrpl-mpp-sdk'
 import { buildAgentContext } from './context'
 import { OwsChannelClaimSigner } from './signer/ows-channel-signer'
+import { OwsXrplSigner } from './signer/ows-xrpl-signer'
 import { closeChannel } from './tools/channel'
 import { ensureFunded } from './tools/funding'
 import { optInToMpt } from './tools/trustline'
@@ -26,8 +27,14 @@ interface CatalogIssuance {
 }
 
 async function main(): Promise<void> {
-  const { deps } = await buildAgentContext()
+  // Channel mode needs the public key as a VALUE (channel `PublicKey` + claim
+  // verification), which native OWS does not expose — so it uses the signHash /
+  // pubkey-recovery signer, unlike every other flow (which uses NativeOwsSigner).
+  const { deps } = await buildAgentContext({ signerKind: 'channel' })
   const { signer, network, merchantUrl, log } = deps
+  if (!(signer instanceof OwsXrplSigner)) {
+    throw new Error('channel mode requires the OWS recovery signer (signerKind: channel)')
+  }
   const address = signer.address()
   const channelSigner = new OwsChannelClaimSigner(signer)
   const source = `did:pkh:xrpl:${network.sdkNetwork}:${address}`

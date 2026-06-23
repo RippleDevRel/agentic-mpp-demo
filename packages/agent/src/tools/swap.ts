@@ -13,7 +13,7 @@ import {
   toIouValue,
   withClient,
 } from '@agentic-mpp-demo-xrpl/shared'
-import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
+import type { XrplSubmitSigner } from '../signer/common'
 import type { IouCurrency } from './trustline'
 
 const TF_IMMEDIATE_OR_CANCEL = 0x00020000
@@ -170,7 +170,7 @@ async function quoteXrpDrops(
  * by the OWS policy at signing, not here.
  */
 export async function ensureIouBalance(
-  signer: OwsXrplSigner,
+  signer: XrplSubmitSigner,
   network: NetworkConfig,
   iou: IouCurrency,
   params: { requiredValue: string; slippageBps: number },

@@ -13,7 +13,7 @@ export interface ResolvedConfig {
 export function resolveConfig(): ResolvedConfig {
   loadEnv()
   const network = resolveNetwork()
-  const payment = resolvePaymentCurrency(network)
+  const payment = resolvePaymentCurrency()
   const asset = resolveRwaAsset()
   return { network, payment, asset }
 }

@@ -20,7 +20,13 @@ export interface MerchantStore {
   /** Idempotency: payment reference (tx hash) -> delivery result. */
   deliveries: Record<
     string,
-    { authorizeHash?: string; issueHash: string; to: string; issuanceId: string }
+    {
+      authorizeHash?: string
+      issueHash: string
+      to: string
+      issuanceId: string
+      baseAmount: string
+    }
   >
 }
 

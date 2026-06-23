@@ -38,7 +38,7 @@ export async function deliver(
   const prior = store.deliveries[reference]
   if (prior) {
     log.info('delivery already completed for this payment (idempotent)', { reference })
-    return { ...prior, baseAmount: unitsToBaseAmount(units, store.assetScale), reused: true }
+    return { ...prior, reused: true }
   }
 
   const payer = params.payer ?? (await payerFromTx(cfg.network.rpcUrl, reference))
@@ -67,6 +67,7 @@ export async function deliver(
     issueHash: issued.hash,
     to: payer,
     issuanceId,
+    baseAmount,
   }
   // Decrement inventory for the primary issuance.
   if (issuanceId === store.issuanceId) {

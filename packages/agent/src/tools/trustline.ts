@@ -10,7 +10,7 @@ import {
   type NetworkConfig,
   withClient,
 } from '@agentic-mpp-demo-xrpl/shared'
-import type { OwsXrplSigner } from '../signer/ows-xrpl-signer'
+import type { XrplSubmitSigner } from '../signer/common'
 
 /** An IOU currency as learned from a 402 challenge. */
 export interface IouCurrency {
@@ -43,7 +43,7 @@ async function hasTrustline(
  * hold and pay in that currency. Signed through OWS (key isolated).
  */
 export async function ensureIouTrustline(
-  signer: OwsXrplSigner,
+  signer: XrplSubmitSigner,
   network: NetworkConfig,
   iou: IouCurrency,
   log: Logger,
@@ -70,7 +70,7 @@ export async function ensureIouTrustline(
  * MPToken object is created in `pending_authorization` state. Signed via OWS.
  */
 export async function optInToMpt(
-  signer: OwsXrplSigner,
+  signer: XrplSubmitSigner,
   network: NetworkConfig,
   issuanceId: string,
   log: Logger,

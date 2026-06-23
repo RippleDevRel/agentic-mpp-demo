@@ -48,7 +48,7 @@ export function buildCatalog(ctx: MerchantContext): Catalog {
   }
 }
 
-/** Look up an offered issuance and the units a single purchase delivers. */
+/** Look up a still-available issuance; one purchase delivers all its remaining units. */
 export function findOffer(
   ctx: MerchantContext,
   issuanceId: string,

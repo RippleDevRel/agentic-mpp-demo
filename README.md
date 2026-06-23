@@ -62,13 +62,22 @@ does not fork or vendor either.
 
 The agent's key is generated inside OWS and never leaves it. Every transaction the
 agent issues — activation, `MPTokenAuthorize` opt-in, `TrustSet`, the XRP→RLUSD
-`OfferCreate`, and the MPP payment — is signed by OWS. Because OWS does not expose the
-public key, the signer recovers the secp256k1 public key from a signature (ECDSA
-recovery, matching the OWS address), signs the tx's signing hash via OWS `signHash`, and
-broadcasts the assembled blob itself via xrpl.js. The MPP payment is done
-in **push mode**: OWS signs the on-chain Payment, then the tx hash is handed to
-the SDK-powered merchant via an mppx credential — so the key stays in OWS while the
-merchant still verifies the payment.
+`OfferCreate`, and the MPP payment — is signed by OWS. There are two signing paths,
+both keeping the key in the vault:
+
+- **Native (`NativeOwsSigner`, the default for every ordinary write):** OWS 1.4.2
+  `signAndSend` accepts the policy-bound token, injects the `SigningPubKey` itself,
+  signs, and broadcasts. The agent never needs the public key.
+- **Channel (`OwsXrplSigner`, payment-channel mode only):** here the public key is
+  needed as a **value** — for the `PaymentChannelCreate.PublicKey` field and to verify
+  off-ledger claims — and OWS does not expose it. So this path recovers the secp256k1
+  key from a `signHash` signature (ECDSA, matching the OWS address), sets it as
+  `SigningPubKey`, signs the tx's signing hash via `signHash`, and broadcasts the
+  assembled blob itself via xrpl.js.
+
+The MPP payment is done in **push mode**: OWS signs the on-chain Payment, then the tx
+hash is handed to the SDK-powered merchant via an mppx credential — so the key stays in
+OWS while the merchant still verifies the payment.
 
 ### Guardrails (enforced by OWS, in both modes)
 
@@ -165,34 +174,48 @@ create policy → mint token → sign with the token.
 > network-agnostic (XRPL addresses are the same across networks). Testnet vs mainnet is
 > decided by the RPC URL, not by OWS.
 
-### The `SigningPubKey` recovery (the one real integration wrinkle)
+### Two signers: native by default, `signHash` recovery for channels
 
 A signed XRPL transaction must carry `SigningPubKey` (the signer's public key) alongside
 `TxnSignature`; rippled checks the signature against that key and the key against the
-`Account`. OWS does **not** expose the public key, so the fix in
-`packages/agent/src/signer/ows-xrpl-signer.ts`:
+`Account`. OWS 1.4.2 can inject that `SigningPubKey` itself — so most flows never touch the
+public key — but it still does **not expose** the key as a value, which payment channels
+need. Hence two signers:
 
-1. ask OWS to `signHash` a known hash (this does not export the key);
-2. recover the secp256k1 public key from that signature via ECDSA recovery — try both
-   recovery bits and keep the candidate whose derived XRPL address matches the OWS
-   account;
-3. set it as `SigningPubKey`, autofill, then sign the tx's signing hash
-   (`sha512half(encodeForSigning(tx))`) via `signHash` and **broadcast the assembled blob
-   ourselves via xrpl.js**.
+**`NativeOwsSigner` (default — `packages/agent/src/signer/native-ows-signer.ts`).** Used by
+every ordinary write (opt-in, trustline, swap, MPP payment):
 
-This one `signHash` path is uniform: it covers broadcast txs *and* the channel `open` blob
-(which the merchant submits, so it must not be broadcast here), and the recovered pubkey is
-reused as the channel public key + to verify claims. The pubkey is cached, `NetworkID` is
-stripped (networks with id ≤ 1024 must omit it), and signing is serialized through a mutex
-(the account sequence is not concurrency-safe).
+1. autofill the tx via xrpl.js (`Account`/`Sequence`/`Fee`/`LastLedgerSequence`), **without**
+   a `SigningPubKey` (OWS rejects one on an unsigned tx and does not autofill those fields);
+2. hand the encoded hex to OWS `signAndSend` over the HTTP JSON-RPC endpoint — OWS injects the
+   `SigningPubKey`, signs (token ⇒ policy-enforced), and broadcasts, returning the tx hash;
+3. wait for validation via the WebSocket client.
 
-> **OWS update (1.4.2):** the [SigningPubKey-injection fix](https://github.com/open-wallet-standard/core/pull/234)
-> means `signTransaction`/`signAndSend` now accept the policy-bound token and inject the
-> pubkey themselves (OWS ≤1.3.2 rejected the token with `InvalidSecretKey`). But OWS still
-> does **not expose the account public key** (`getWallet`/`AccountInfo`), which is what
-> channel mode needs (the `PaymentChannelCreate` PublicKey + claim verification), so the
-> ECDSA recovery stays. The clean upstream fix would be exposing the pubkey (or an
-> external-signer constructor on the SDK `Wallet`, `Wallet.fromSigner`).
+**`OwsXrplSigner` (channel mode only — `packages/agent/src/signer/ows-xrpl-signer.ts`).**
+Payment channels need the public key as a **value** — for `PaymentChannelCreate.PublicKey`
+and to verify off-ledger claims — and OWS won't expose it, so this path:
+
+1. asks OWS to `signHash` a known hash (this does not export the key);
+2. recovers the secp256k1 public key from that signature via ECDSA recovery — try both
+   recovery bits and keep the candidate whose derived XRPL address matches the OWS account;
+3. sets it as `SigningPubKey`, autofills, then signs the tx's signing hash
+   (`sha512half(encodeForSigning(tx))`) via `signHash` and **broadcasts the assembled blob
+   ourselves via xrpl.js**. The same path also yields the channel `open` blob *without*
+   broadcasting (the merchant submits it), and the recovered pubkey is reused as the channel
+   public key + to verify claims.
+
+Both share the `XrplSubmitSigner` interface (`address()` + `signAndSubmit()`), so the tools
+don't care which one they get; both strip `NetworkID` (ids ≤ 1024 must omit it) and serialize
+signing through a mutex (the account sequence is not concurrency-safe).
+
+> **Why two paths (OWS 1.4.2):** the [SigningPubKey-injection fix](https://github.com/open-wallet-standard/core/pull/234)
+> made `signTransaction`/`signAndSend` accept the policy-bound token and inject the pubkey
+> themselves (OWS ≤1.3.2 rejected the token with `InvalidSecretKey`, which is why everything
+> used to go through `signHash`). That fix lets ordinary writes drop the recovery entirely.
+> But OWS still does **not expose the account public key** (`getWallet`/`AccountInfo`), which
+> is what channel mode needs — so the ECDSA recovery survives only there. The clean upstream
+> fix would be exposing the pubkey (or an external-signer constructor, `Wallet.fromSigner`),
+> which would remove the recovery from channel mode too.
 
 ### What the agent can and cannot access
 
@@ -200,17 +223,17 @@ stripped (networks with id ≤ 1024 must omit it), and signing is serialized thr
 | --- | --- |
 | the merchant **endpoint URL** + its own API key | the merchant's ledger address (it learns it from the 402) |
 | a **policy-bound OWS token** (XRPL-only, expiring, spend-capped) | the OWS **owner passphrase** |
-| `signHash`-brokered signing (we assemble + broadcast the blob) | the **private key / mnemonic** (it stays encrypted in the vault) |
-| the recovered **public key** + its own XRPL address | any way to export the key (`exportWallet`/seed paths are blocked by a test) |
+| OWS-brokered signing (native `signAndSend`, or `signHash` in channel mode) | the **private key / mnemonic** (it stays encrypted in the vault) |
+| its own XRPL address (+ the **recovered public key** in channel mode) | any way to export the key (`exportWallet`/seed paths are blocked by a test) |
 
 ### On-chain access: reads via xrpl.js, writes via OWS
 
 The agent's **code** depends on `xrpl.js` for all ledger **reads** — `withClient`
 (`packages/shared/src/xrpl.ts`) opens an xrpl.js `Client` over **WebSocket**
 (`XRPL_RPC_URL`) and issues rippled queries (`account_info`, `account_objects`,
-`account_lines`, `book_offers`, `tx`). **Writes** are signed inside OWS (`signHash` over the
-tx's signing hash) and then **broadcast by us via the same xrpl.js WebSocket client** —
-the key never leaves the vault, but we submit the signed blob ourselves.
+`account_lines`, `book_offers`, `tx`). **Writes** are signed inside OWS — ordinary writes via
+`signAndSend` (OWS broadcasts), channel writes via `signHash` (we broadcast the assembled
+blob over the same xrpl.js WebSocket client) — the key never leaves the vault either way.
 
 What the **model** can query depends on the mode: in **rails** the read happens inside
 domain tools (`get_status`, `discover_issuances`, `quote_resource`, …) and the model only
@@ -245,7 +268,10 @@ packages/
   merchant/  # RWA issuer + MPP charge server + delivery (bootstrap, server, issuer)
     src/channel-server.ts  # channel-mode merchant (MPP `channel` intent, XRP)
   agent/
-    src/signer/         # OWS signing bridge (pubkey recovery + signHash, self-broadcast)
+    src/signer/         # OWS signing bridge (see common.ts for the shared interface)
+      common.ts              # XrplSubmitSigner interface + shared options/helpers
+      native-ows-signer.ts   # default: OWS signAndSend (no pubkey needed)
+      ows-xrpl-signer.ts     # channel-only: signHash + pubkey recovery, self-broadcast
       ows-channel-signer.ts  # OWS-signed PayChannel claims (channel mode)
     src/tools/          # rails: discovery, funding, swap, trustline, mpp, wallet, channel
     src/loop.ts         # rails agent (high-level domain tools)
@@ -273,8 +299,10 @@ Everything the buyer agent does lives in `packages/agent/`. Read it in this orde
 | `src/pipeline.ts` | `AcquireDeps` type + `runAcquisition()` — the **deterministic** acquisition (no model): quote → opt-in → trust+swap → pay → confirm. The rails tools wrap these same steps. |
 | `src/loop.ts` | The **rails** agent: wraps the domain functions as model tools (`tool()`), defines the system prompt, runs `query()`. |
 | `src/state.ts` | `AgentStore` (persisted under `.data/`): wallet id, address, policy id, the OWS **token**, `maxSpendXrp`, and the `acquired` set. |
-| `src/signer/ows-xrpl-signer.ts` | The **OWS signing bridge**: pubkey recovery + `signHash` + self-broadcast via xrpl.js. Every write goes through `signer.signAndSubmit(tx, { label })`. |
-| `src/tools/wallet.ts` | `ensureAgentWallet()` — creates the OWS wallet + policy + token (or reuses the stored one). |
+| `src/signer/common.ts` | The shared **`XrplSubmitSigner`** interface (`address()` + `signAndSubmit()`) + options/helpers. Tools depend on this, not a concrete signer. |
+| `src/signer/native-ows-signer.ts` | The **default signer**: OWS 1.4.2 `signAndSend` (OWS injects `SigningPubKey` + broadcasts). Every ordinary write goes through `signer.signAndSubmit(tx, { label })`. |
+| `src/signer/ows-xrpl-signer.ts` | The **channel-mode signer**: pubkey recovery + `signHash` + self-broadcast via xrpl.js. Also exposes `publicKey()`/`signToBlob()`/`signDigest()` that channels need. |
+| `src/tools/wallet.ts` | `ensureAgentWallet()` — creates the OWS wallet + policy + token (or reuses the stored one). Its `SignerKind` arg picks the signer: `native` (default) or `channel`. |
 | `src/tools/discovery.ts` | Read the seller catalog + on-ledger cross-check → the list of acquirable issuances. |
 | `src/tools/funding.ts` | Reserve sizing + faucet funding. |
 | `src/tools/trustline.ts` | `ensureIouTrustline()` (TrustSet) + `optInToMpt()` (holder `MPTokenAuthorize`). |
@@ -371,8 +399,10 @@ Both read `ANTHROPIC_API_KEY`, `OWS_PASSPHRASE`, and `MERCHANT_URL` from `.env`.
 ### What's irreducible either way
 
 Two pieces have no generic/CLI equivalent and exist in both modes:
-1. **The OWS signing bridge** (`packages/agent/src/signer/ows-xrpl-signer.ts`) — recover
-   the pubkey, sign the tx hash via OWS `signHash`, broadcast the blob via xrpl.js.
+1. **The OWS signing bridge** (`packages/agent/src/signer/`) — `NativeOwsSigner` hands the
+   autofilled tx to OWS `signAndSend` (OWS injects the pubkey + broadcasts); channel mode's
+   `OwsXrplSigner` recovers the pubkey, signs the tx hash via `signHash`, and broadcasts the
+   blob via xrpl.js.
 2. **The MPP credential glue** (`Challenge.fromResponse` + `Credential.serialize`) — the
    402/credential envelope can't be reconstructed from raw HTTP.
 
@@ -421,6 +451,10 @@ The key never leaves OWS: claims are signed via `signHash` (a PayChannel claim i
 secp256k1 signature over `sha512half(encodeForSigningClaim({channel, amount}))`), and the
 channel public key is the recovered OWS key. Verification reuses the SDK's
 `xrpl-mpp-sdk/channel/server` method; only the client signing is reproduced for OWS custody.
+This is the **one mode that uses `OwsXrplSigner`** (the `signHash`/recovery signer): it needs
+the public key as a value for the channel + claims, which OWS doesn't expose. Every other
+flow uses the native `signAndSend` signer instead (`buildAgentContext({ signerKind: 'channel' })`
+selects it).
 
 ```bash
 # terminal 1 — channel-mode merchant (XRP pricing):
@@ -458,12 +492,13 @@ pnpm check:channel   # isolated live check: OWS opens a channel + signs a verifi
 
 ## Known constraints
 
-1. **Signer integration is the central task.** Resolved by recovering the OWS public
-   key (OWS does not expose it), signing the tx hash via OWS `signHash`, and broadcasting
-   the blob ourselves — one uniform path that also yields the unbroadcast channel `open`
-   blob; the MPP leg uses push mode. The clean upstream fix is exposing the account public
-   key (OWS 1.4.2 fixed token signing but not pubkey exposure) or an external-signer
-   constructor on the SDK `Wallet` (`Wallet.fromSigner`).
+1. **Signer integration is the central task.** Ordinary writes use OWS 1.4.2 `signAndSend`
+   (OWS injects the pubkey + broadcasts). Channel mode still recovers the OWS public key
+   (OWS does not expose it), signs the tx hash via `signHash`, and broadcasts the blob
+   ourselves — the only path that also yields the unbroadcast channel `open` blob; the MPP
+   leg uses push mode. The clean upstream fix is exposing the account public key (OWS 1.4.2
+   fixed token signing but not pubkey exposure) or an external-signer constructor on the SDK
+   `Wallet` (`Wallet.fromSigner`), which would let channel mode drop the recovery too.
 2. **RLUSD funding on testnet** is not scriptable, so the agent self-funds in XRP and
    swaps to RLUSD on the existing testnet AMM (no operator liquidity setup).
 3. **RLUSD identifiers — merchant vs agent.** The *merchant* charges in RLUSD using the

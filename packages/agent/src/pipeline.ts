@@ -12,7 +12,7 @@ import {
   type RunSummary,
   withClient,
 } from '@agentic-mpp-demo-xrpl/shared'
-import type { OwsXrplSigner } from './signer/ows-xrpl-signer'
+import type { XrplSubmitSigner } from './signer/common'
 import { type AgentStore, saveAgentStore } from './state'
 import { type DiscoveredIssuance, discover } from './tools/discovery'
 import { ensureFunded } from './tools/funding'
@@ -21,7 +21,7 @@ import { ensureIouBalance } from './tools/swap'
 import { ensureIouTrustline, optInToMpt } from './tools/trustline'
 
 export interface AcquireDeps {
-  signer: OwsXrplSigner
+  signer: XrplSubmitSigner
   network: NetworkConfig
   /** The seller's service endpoint — the ONLY merchant locator the agent is given. */
   merchantUrl: string
