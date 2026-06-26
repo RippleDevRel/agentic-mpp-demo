@@ -444,8 +444,22 @@ It stays merchant-driven (the merchant proposes the channel in a 402) and **XRP-
 
 If the agent **disconnects without closing**, the merchant's SDK **auto-close sweeper**
 claims the latest voucher on-chain once the channel has been idle for `CHANNEL_IDLE_MS`
-(it scans every `CHANNEL_SWEEP_MS`) — so the merchant still collects what it earned. Kill
-the agent mid-run and watch for `AUTO-CLOSE: idle channel claimed on-chain by merchant`.
+(it scans every `CHANNEL_SWEEP_MS`) — so the merchant still collects what it earned. To see
+it, kill the agent mid-run and watch for `AUTO-CLOSE: idle channel claimed on-chain by
+merchant`. `CHANNEL_IDLE_MS` must stay **above the gap between vouchers** (default 120s):
+each round does an on-chain opt-in + delivery + validation, so a too-low idle window would
+let the sweeper fire mid-stream and claim a stale, too-low cumulative while the agent is
+still buying.
+
+**Settle delay & unspent funds.** Closing is funder-initiated (`tfClose`) and not instant:
+it starts a `SettleDelay` (24h here). During that window the merchant can still submit its
+latest voucher to collect everything it earned; only *after* it does any **unclaimed** XRP
+return to the agent — it's the agent's escrowed capital, and the merchant is only ever owed
+what it holds a signed voucher for (handing it un-vouchered funds would be the unsafe
+direction). Until someone closes, the channel stays open indefinitely and the merchant can
+claim at any time. A signed voucher is also durable: it stays valid and re-submittable for
+the whole open window, so a merchant with a persistent store can redeem it after a restart —
+in this demo the merchant's voucher store is in-memory, so it does not survive a restart.
 
 The key never leaves OWS: claims are signed via `signHash` (a PayChannel claim is a
 secp256k1 signature over `sha512half(encodeForSigningClaim({channel, amount}))`), and the
@@ -488,7 +502,7 @@ pnpm check:channel   # isolated live check: OWS opens a channel + signs a verifi
 | `OWS_WALLET_NAME`, `OWS_PASSPHRASE`, `OWS_VAULT_PATH` | OWS wallet name, owner passphrase, vault dir |
 | `SWAP_SLIPPAGE_BPS` | swap slippage bound |
 | `CHANNEL_XRP` | channel-mode buyer: XRP the agent locks in the PayChannel (default `50`) |
-| `CHANNEL_IDLE_MS`, `CHANNEL_SWEEP_MS` | channel-mode merchant: auto-close an idle channel after this long / scan interval (defaults `30000` / `10000`) |
+| `CHANNEL_IDLE_MS`, `CHANNEL_SWEEP_MS` | channel-mode merchant: auto-close an idle channel after this long / scan interval (defaults `120000` / `10000`). `CHANNEL_IDLE_MS` must exceed the gap between vouchers or a live run is swept mid-stream |
 
 ## Known constraints
 

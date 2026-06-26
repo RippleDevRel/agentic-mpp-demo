@@ -67,9 +67,13 @@ export async function startChannelServer(): Promise<{
 
   // Server-initiated session close: if the agent disconnects without closing, the
   // SDK's auto-close sweeper claims the latest voucher on-chain once the channel
-  // goes idle for `idleMs`. Keep idleMs > the normal gap between vouchers so a live
-  // run is never closed mid-stream.
-  const idleMs = getEnvNumber('CHANNEL_IDLE_MS', 30000)
+  // goes idle for `idleMs`. idleMs MUST exceed the worst-case gap between vouchers,
+  // or the sweeper fires mid-stream and claims a stale (too-low) cumulative while
+  // the agent is still buying — under-collecting. Each round does an on-chain opt-in
+  // + delivery + validation, which can spike past 30s on a busy testnet, so the
+  // default is generous (120s): a genuinely-abandoned channel still closes within a
+  // couple of minutes, but a live run is never swept.
+  const idleMs = getEnvNumber('CHANNEL_IDLE_MS', 120000)
   const sweepIntervalMs = getEnvNumber('CHANNEL_SWEEP_MS', 10000)
 
   // Advertise-only instance for the first 402 (no channel yet, no sweeper).
@@ -108,12 +112,17 @@ export async function startChannelServer(): Promise<{
           channelId: string
           cumulative: string
           txHash: string
-        }) =>
+        }) => {
           log.mpp('AUTO-CLOSE: idle channel claimed on-chain by merchant', {
             channelId,
             cumulativeXrp: Number(cumulative) / 1e6,
+          })
+          log.txn(
+            'PaymentChannelClaim (auto-close redeem)',
             txHash,
-          }),
+            cfg.network.explorerTx?.(txHash),
+          )
+        },
         onError: ({ channelId, error }: { channelId: string; error: Error }) =>
           log.warn('auto-close attempt failed', { channelId, msg: error.message }),
       },
@@ -287,15 +296,40 @@ export async function startChannelServer(): Promise<{
           sendJson(res, 404, { error: 'UNKNOWN_CHANNEL', channelId })
           return
         }
-        const redeemed = await closeFromStore({
-          wallet: ctx.wallet,
-          channelId,
-          channelPublicKey: rec.publicKey,
-          store: sharedStore,
-          network: cfg.network.sdkNetwork,
-          rpcUrl: cfg.network.rpcUrl,
-        })
-        sendJson(res, 200, { ok: true, redeemed })
+        // Cooperative redeem is an optimistic fast-path: redeem the latest voucher
+        // on-chain right when the agent asks. If it fails (e.g. a transient
+        // tecUNFUNDED_PAYMENT from racing the agent's own close), don't crash the
+        // request — the auto-close sweeper will redeem the same voucher shortly.
+        try {
+          const redeemed = await closeFromStore({
+            wallet: ctx.wallet,
+            channelId,
+            channelPublicKey: rec.publicKey,
+            store: sharedStore,
+            network: cfg.network.sdkNetwork,
+            rpcUrl: cfg.network.rpcUrl,
+          })
+          if (redeemed) {
+            log.mpp('channel close — redeeming latest voucher on-chain', {
+              channelId,
+              cumulativeXrp: Number(redeemed.cumulative) / 1e6,
+            })
+            log.txn(
+              'PaymentChannelClaim (redeem)',
+              redeemed.txHash,
+              cfg.network.explorerTx?.(redeemed.txHash),
+            )
+          } else {
+            log.mpp('channel close requested — no voucher on file, nothing to redeem', {
+              channelId,
+            })
+          }
+          sendJson(res, 200, { ok: true, redeemed })
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          log.warn('cooperative redeem failed — auto-close sweeper will retry', { channelId, msg })
+          sendJson(res, 200, { ok: false, redeemed: null, reason: msg, autoCloseWillRetry: true })
+        }
         return
       }
 
