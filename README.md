@@ -37,6 +37,7 @@ does not fork or vendor either.
                  │  merchant (issuer + MPP server)                                      │
                  │  • self-funds, creates permissioned RWA MPT (tfMPTRequireAuth)       │
                  │  • sets RLUSD trust line, serves /catalog + /rwa/:id (MPP 402)        │
+                 │  • serves /openapi.json (MPP discovery: prices before calling)       │
                  │  • on paid 402: MPTokenAuthorize(payer) then issues the MPT           │
                  └──────────────────────────────────────────────────────────────────────┘
                                               ▲   │ 402 challenge / delivery
@@ -57,6 +58,10 @@ does not fork or vendor either.
   catalog to find the resources on offer and learns each purchase's **payment recipient,
   amount, and currency from the resource's HTTP 402 challenge** when it pays. No wallet,
   funding, trust line, authorization, or swap is pre-provisioned.
+- **MPP discovery** — the merchant also serves `GET /openapi.json`, an OpenAPI 3.1 document
+  whose paid operation carries an `x-payment-info` offer (method, intent, amount, currency).
+  Agents and registries can learn the terms *before* calling; it is advisory — the runtime
+  402 challenge stays authoritative.
 
 ### Key isolation (the crux)
 

@@ -19,6 +19,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { getEnvNumber, withClient } from '@agentic-mpp-demo-xrpl/shared'
 import { Credential } from 'mppx'
+import { generate } from 'mppx/discovery'
 import { Mppx, Store } from 'mppx/server'
 import { decode, Wallet as XrplWallet } from 'xrpl'
 import { toDrops } from 'xrpl-mpp-sdk'
@@ -151,7 +152,28 @@ export async function startChannelServer(): Promise<{
           service: 'autonomous-rwa-merchant',
           mode: 'channel',
           merchant: store.address,
+          endpoints: { catalog: '/catalog', subscribe: '/subscribe', discovery: '/openapi.json' },
         })
+        return
+      }
+
+      // MPP discovery: OpenAPI 3.1 doc advertising the `session` offer on
+      // /subscribe, so agents/registries learn the channel terms up front.
+      // Advisory — the runtime 402 session challenge stays authoritative.
+      if (path === '/openapi.json') {
+        const offer = advertiseMppx['xrpl/session']({
+          amount: priceDrops(ctx),
+          currency: 'XRP',
+          channelId: '',
+          recipient: store.address,
+          description: 'Subscribe to RWA MPT emissions over an XRP payment channel',
+        })
+        const doc = generate(advertiseMppx, {
+          info: { title: 'Autonomous RWA merchant (channel mode)', version: '1.0.0' },
+          serviceInfo: { categories: ['rwa'] },
+          routes: [{ handler: offer, method: 'get', path: '/subscribe' }],
+        })
+        sendJson(res, 200, doc)
         return
       }
 

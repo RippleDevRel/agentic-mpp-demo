@@ -1,6 +1,6 @@
 /**
  * Shared signer surface. Two OWS-backed signers implement `XrplSubmitSigner`:
- *  - NativeOwsSigner   — OWS 1.4.2 `signAndSend` (the default for every non-channel
+ *  - NativeOwsSigner   — OWS `signAndSend` (the default for every non-channel
  *    flow; OWS injects `SigningPubKey` and broadcasts, so no pubkey recovery).
  *  - OwsXrplSigner     — `signHash` + ECDSA pubkey recovery (CHANNEL ONLY, where the
  *    pubkey is needed as a VALUE for `PaymentChannelCreate.PublicKey` + claims).

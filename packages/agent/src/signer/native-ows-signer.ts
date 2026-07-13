@@ -1,6 +1,6 @@
 /**
  * Native OWS signer — the default path for every NON-channel agent write
- * (opt-in, trustline, swap, MPP payment). Uses OWS 1.4.2 `signAndSend`: OWS
+ * (opt-in, trustline, swap, MPP payment). Uses OWS `signAndSend`: OWS
  * accepts the policy-bound API token, injects `SigningPubKey` itself, signs, and
  * broadcasts — so this never needs the account public key (no ECDSA recovery).
  * The private key never leaves the vault.

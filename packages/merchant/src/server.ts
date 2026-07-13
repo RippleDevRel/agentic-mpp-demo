@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { getEnvNumber } from '@agentic-mpp-demo-xrpl/shared'
 import { Receipt } from 'mppx'
+import { generate } from 'mppx/discovery'
 import { Mppx, Store } from 'mppx/server'
 import { toDrops } from 'xrpl-mpp-sdk'
 import { charge } from 'xrpl-mpp-sdk/server'
@@ -55,7 +56,7 @@ export async function startServer(): Promise<{
           merchant: store.address,
           network: cfg.network.name,
           paymentCurrency: cfg.payment.label,
-          endpoints: { catalog: '/catalog', buy: '/rwa/:issuanceId' },
+          endpoints: { catalog: '/catalog', buy: '/rwa/:issuanceId', discovery: '/openapi.json' },
         })
         return
       }
@@ -63,6 +64,25 @@ export async function startServer(): Promise<{
       if (path === '/catalog') {
         log.info('GET /catalog')
         sendJson(res, 200, buildCatalog(ctx))
+        return
+      }
+
+      // MPP discovery: an OpenAPI 3.1 doc whose paid operation carries an
+      // `x-payment-info` offer, so agents/registries can learn the price before
+      // calling. Advisory — the runtime 402 challenge stays authoritative.
+      if (path === '/openapi.json') {
+        const offer = mppx['xrpl/charge']({
+          amount: chargeAmount(ctx),
+          currency: chargeCurrencyString(ctx),
+          recipient: store.address,
+          description: 'Permissioned RWA MPT issuance',
+        })
+        const doc = generate(mppx, {
+          info: { title: 'Autonomous RWA merchant', version: '1.0.0' },
+          serviceInfo: { categories: ['rwa'] },
+          routes: [{ handler: offer, method: 'get', path: '/rwa/{issuanceId}' }],
+        })
+        sendJson(res, 200, doc)
         return
       }
 
@@ -104,8 +124,8 @@ export async function startServer(): Promise<{
           return
         }
 
-        // mppx 0.7 exposes the receipt only via the Payment-Receipt header it sets
-        // on withReceipt(); peek it to recover the on-chain tx reference.
+        // mppx exposes the receipt only via the Payment-Receipt header it sets on
+        // withReceipt(); peek it to recover the on-chain tx reference.
         const peek = result.withReceipt(Response.json({}))
         const reference = Receipt.fromResponse(peek).reference
         if (!reference)

@@ -26,9 +26,9 @@ import { OwsXrplSigner } from '../signer/ows-xrpl-signer'
 import { type AgentStore, loadAgentStore, saveAgentStore } from '../state'
 
 /**
- * Which OWS signer to build. `native` (default) uses OWS 1.4.2 `signAndSend` for
- * every ordinary write. `channel` uses the `signHash` + pubkey-recovery signer,
- * which payment-channel mode needs (the pubkey as a value for the channel + claims).
+ * Which OWS signer to build. `native` (default) uses OWS `signAndSend` for every
+ * ordinary write. `channel` uses the `signHash` + pubkey-recovery signer, which
+ * payment-channel mode needs (the pubkey as a value for the channel + claims).
  */
 export type SignerKind = 'native' | 'channel'
 

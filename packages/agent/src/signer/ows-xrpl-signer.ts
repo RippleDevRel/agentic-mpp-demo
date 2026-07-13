@@ -1,6 +1,6 @@
 /**
  * OWS signing bridge for XRPL — CHANNEL MODE ONLY. Every NON-channel write uses
- * NativeOwsSigner (OWS 1.4.2 `signAndSend`, no pubkey needed). This signer exists
+ * NativeOwsSigner (OWS `signAndSend`, no pubkey needed). This signer exists
  * because payment channels need the account public key as a VALUE — for
  * `PaymentChannelCreate.PublicKey` and to verify off-ledger claims — and OWS does
  * not expose it. So this recovers the secp256k1 pubkey (ECDSA recovery from a
