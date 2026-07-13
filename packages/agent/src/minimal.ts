@@ -15,6 +15,7 @@ import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
 import { Challenge, Credential } from 'mppx'
 import { z } from 'zod'
 import { buildAgentContext } from './context'
+import { fetchMppOffers } from './tools/discovery'
 import { quoteResource } from './tools/mpp'
 
 const TESTNET_FAUCET = 'https://faucet.altnet.rippletest.net/accounts'
@@ -113,6 +114,12 @@ async function main(): Promise<void> {
       },
     ),
     tool(
+      'mpp_discover',
+      "Read the merchant's MPP discovery doc (GET /openapi.json) to learn the advertised payment offers (method, intent, amount, currency, route) BEFORE calling anything. Advisory — a resource's 402 challenge is authoritative at pay time — but a good pre-flight to learn the price/currency.",
+      {},
+      async () => ok(await fetchMppOffers(merchantUrl, log)),
+    ),
+    tool(
       'mpp_quote',
       "Read an MPP resource's 402 challenge WITHOUT paying. Returns the payment terms: recipient, amount, and currency (XRP, or an IOU with currency code + issuer).",
       { url: z.string() },
@@ -206,6 +213,7 @@ JSON-string \`txJson\` (the whole transaction serialized as a string).
 - xrpl_sign_submit(txJson): autofills, signs via OWS, submits, waits for validation. txJson omits Account/SigningPubKey/Sequence/Fee.
 - faucet(address): testnet XRP faucet — fund yourself if account_info shows the account is not found, then WAIT and re-query account_info until it exists before signing.
 - http_get(url): plain GET (e.g. the merchant's /catalog).
+- mpp_discover(): read the merchant's advertised MPP offers (GET /openapi.json) up front — advisory pre-flight; the 402 stays authoritative.
 - mpp_quote(url): read an MPP resource's 402 and return its payment terms.
 - mpp_settle(url, paymentTxHash): after you pay on-chain, hand over the tx hash to take delivery.
 

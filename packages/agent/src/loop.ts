@@ -11,7 +11,7 @@ import { z } from 'zod'
 import type { AcquireDeps } from './pipeline'
 import type { AgentStore } from './state'
 import { saveAgentStore } from './state'
-import { discover } from './tools/discovery'
+import { discover, fetchMppOffers } from './tools/discovery'
 import { ensureFunded } from './tools/funding'
 import { payViaMpp, quoteResource } from './tools/mpp'
 import { ensureIouBalance } from './tools/swap'
@@ -71,6 +71,13 @@ function buildTools(deps: AcquireDeps, store: AgentStore) {
       )
       return ok(items)
     },
+  )
+
+  const discoverOffersTool = tool(
+    'discover_offers',
+    "Read the merchant's MPP discovery doc (GET /openapi.json) to learn the advertised payment offers (method, intent, amount, currency) BEFORE calling a resource. Advisory — each resource's 402 challenge is authoritative at pay time — but useful to pre-check the price/currency.",
+    {},
+    async () => ok(await fetchMppOffers(deps.merchantUrl, deps.log)),
   )
 
   const quoteTool = tool(
@@ -158,6 +165,7 @@ function buildTools(deps: AcquireDeps, store: AgentStore) {
     getStatus,
     ensureFundedTool,
     discoverTool,
+    discoverOffersTool,
     quoteTool,
     optInTool,
     trustlineTool,
@@ -189,6 +197,8 @@ Approach, step by step:
 1. get_status to see your address, balance, and what is already acquired.
 2. ensure_funded so you can cover reserves, the swap, and fees.
 3. discover_issuances to list the resources on offer (id + URL) you do not yet own.
+   Optionally call discover_offers first to read the merchant's advertised MPP terms
+   (price/method/currency) up front — advisory, the 402 stays authoritative.
 4. For EACH resource, in order:
    a. quote_resource with its URL to learn the payment terms from the 402: recipient,
       amount, and currency (XRP, or an IOU with currency code + issuer),

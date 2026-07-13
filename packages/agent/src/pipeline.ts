@@ -14,7 +14,7 @@ import {
 } from '@agentic-mpp-demo-xrpl/shared'
 import type { XrplSubmitSigner } from './signer/common'
 import { type AgentStore, saveAgentStore } from './state'
-import { type DiscoveredIssuance, discover } from './tools/discovery'
+import { type DiscoveredIssuance, discover, fetchMppOffers, type MppOffer } from './tools/discovery'
 import { ensureFunded } from './tools/funding'
 import { payViaMpp, quoteResource } from './tools/mpp'
 import { ensureIouBalance } from './tools/swap'
@@ -37,12 +37,26 @@ export interface AcquireResult {
 }
 
 /** quote (402) -> opt-in -> trust+swap (if IOU) -> pay -> receive, for one issuance. */
-async function acquireOne(deps: AcquireDeps, issuance: DiscoveredIssuance): Promise<AcquireResult> {
+async function acquireOne(
+  deps: AcquireDeps,
+  issuance: DiscoveredIssuance,
+  offers: MppOffer[],
+): Promise<AcquireResult> {
   const { signer, network, log } = deps
   log.step('acquiring issuance', { issuanceId: issuance.issuanceId })
 
   // Learn the payment terms (recipient, amount, currency) from the resource's 402.
   const quote = await quoteResource(issuance.url, log)
+
+  // Cross-check the authoritative 402 price against what discovery advertised
+  // (advisory): a mismatch means the published terms are stale, not a hard error.
+  const advertised = offers.find((o) => o.intent === 'charge')
+  if (advertised?.amount && advertised.amount !== quote.amount) {
+    log.warn('402 price differs from the advertised discovery offer', {
+      advertised: advertised.amount,
+      charged: quote.amount,
+    })
+  }
 
   // Holder opt-in must precede payment so the issuer can authorize this holder.
   await optInToMpt(signer, network, issuance.issuanceId, log)
@@ -105,6 +119,10 @@ export async function runAcquisition(
     deps.log,
   )
 
+  // Pre-flight: consume the merchant's MPP discovery doc to learn the terms up
+  // front (advisory; each resource's 402 remains authoritative at pay time).
+  const offers = await fetchMppOffers(deps.merchantUrl, deps.log)
+
   const issuances = await discover(
     { merchantUrl: deps.merchantUrl, network: deps.network, acquired },
     deps.log,
@@ -116,7 +134,7 @@ export async function runAcquisition(
 
   const results: AcquireResult[] = []
   for (const issuance of issuances) {
-    const result = await acquireOne(deps, issuance)
+    const result = await acquireOne(deps, issuance, offers)
     results.push(result)
     acquired.add(result.issuanceId)
     store.acquired = [...acquired]

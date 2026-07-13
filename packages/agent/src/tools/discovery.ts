@@ -75,6 +75,60 @@ export async function discover(
   return fresh
 }
 
+/** An advertised MPP payment offer, parsed from a `/openapi.json` operation. */
+export interface MppOffer {
+  /** The route the offer protects (e.g. `/rwa/{issuanceId}`). */
+  path: string
+  method?: string
+  intent?: string
+  amount?: string
+  currency?: string
+  recipient?: string
+}
+
+/**
+ * Consume the merchant's MPP discovery doc (`GET /openapi.json`) and return the
+ * advertised payment offers. This is the pre-flight the MPP spec intends: an
+ * agent learns the price/method/currency BEFORE hitting the resource. It is
+ * advisory — the runtime 402 challenge stays authoritative — so a merchant that
+ * doesn't serve discovery simply yields `[]` (non-fatal).
+ */
+export async function fetchMppOffers(merchantUrl: string, log: Logger): Promise<MppOffer[]> {
+  const res = await fetch(`${merchantUrl}/openapi.json`).catch(() => null)
+  if (!res?.ok) {
+    log.info('no MPP discovery doc (advisory — will rely on the 402)', {
+      status: res?.status ?? 'unreachable',
+    })
+    return []
+  }
+  const doc = (await res.json().catch(() => null)) as {
+    paths?: Record<
+      string,
+      Record<string, { 'x-payment-info'?: { offers?: Array<Record<string, string>> } }>
+    >
+  } | null
+  const offers: MppOffer[] = []
+  for (const [path, ops] of Object.entries(doc?.paths ?? {})) {
+    for (const op of Object.values(ops)) {
+      for (const o of op['x-payment-info']?.offers ?? []) {
+        offers.push({
+          path,
+          method: o.method,
+          intent: o.intent,
+          amount: o.amount,
+          currency: o.currency,
+          recipient: o.recipient,
+        })
+      }
+    }
+  }
+  log.mpp('discovered MPP offers via /openapi.json (advisory; the 402 is authoritative)', {
+    count: offers.length,
+    offers: offers.map((o) => `${o.method}/${o.intent} ${o.amount} ${o.currency} @ ${o.path}`),
+  })
+  return offers
+}
+
 /** Pure: keep in-stock, not-yet-acquired issuances and resolve their absolute URL. */
 export function filterAcquirable(
   items: CatalogResponse['items'],

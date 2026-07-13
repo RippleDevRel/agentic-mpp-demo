@@ -17,6 +17,7 @@ import { buildAgentContext } from './context'
 import { OwsChannelClaimSigner } from './signer/ows-channel-signer'
 import { OwsXrplSigner } from './signer/ows-xrpl-signer'
 import { closeChannel } from './tools/channel'
+import { fetchMppOffers } from './tools/discovery'
 import { ensureFunded } from './tools/funding'
 import { optInToMpt } from './tools/trustline'
 
@@ -54,6 +55,11 @@ async function main(): Promise<void> {
     subscribe?: string
   }
   log.mpp('read catalog hint', { message: catalog.message })
+
+  // Pre-flight: consume MPP discovery to learn the session terms up front
+  // (advisory; the /subscribe 402 session challenge remains authoritative).
+  await fetchMppOffers(merchantUrl, log)
+
   const subscribeUrl = `${merchantUrl}${catalog.subscribe ?? '/subscribe'}`
 
   // 2. GET /subscribe -> 402 channel offer (merchant proposes the channel).

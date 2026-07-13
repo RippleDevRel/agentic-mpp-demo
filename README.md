@@ -58,10 +58,13 @@ does not fork or vendor either.
   catalog to find the resources on offer and learns each purchase's **payment recipient,
   amount, and currency from the resource's HTTP 402 challenge** when it pays. No wallet,
   funding, trust line, authorization, or swap is pre-provisioned.
-- **MPP discovery** — the merchant also serves `GET /openapi.json`, an OpenAPI 3.1 document
-  whose paid operation carries an `x-payment-info` offer (method, intent, amount, currency).
-  Agents and registries can learn the terms *before* calling; it is advisory — the runtime
-  402 challenge stays authoritative.
+- **MPP discovery** — the merchant serves `GET /openapi.json`, an OpenAPI 3.1 document whose
+  paid operation carries an `x-payment-info` offer (method, intent, amount, currency), so
+  agents and registries can learn the terms *before* calling. The buyer agent **consumes**
+  it as a pre-flight in every mode (deterministic pipeline + rails `discover_offers` tool +
+  minimal `mpp_discover` tool + channel driver), and the deterministic path even cross-checks
+  the advertised price against the live 402. Advisory throughout — the 402 challenge stays
+  authoritative.
 
 ### Key isolation (the crux)
 
@@ -308,7 +311,7 @@ Everything the buyer agent does lives in `packages/agent/`. Read it in this orde
 | `src/signer/native-ows-signer.ts` | The **default signer**: OWS 1.4.2 `signAndSend` (OWS injects `SigningPubKey` + broadcasts). Every ordinary write goes through `signer.signAndSubmit(tx, { label })`. |
 | `src/signer/ows-xrpl-signer.ts` | The **channel-mode signer**: pubkey recovery + `signHash` + self-broadcast via xrpl.js. Also exposes `publicKey()`/`signToBlob()`/`signDigest()` that channels need. |
 | `src/tools/wallet.ts` | `ensureAgentWallet()` — creates the OWS wallet + policy + token (or reuses the stored one). Its `SignerKind` arg picks the signer: `native` (default) or `channel`. |
-| `src/tools/discovery.ts` | Read the seller catalog + on-ledger cross-check → the list of acquirable issuances. |
+| `src/tools/discovery.ts` | Read the seller catalog + on-ledger cross-check → acquirable issuances; plus `fetchMppOffers()` — consume the merchant's `/openapi.json` MPP discovery doc. |
 | `src/tools/funding.ts` | Reserve sizing + faucet funding. |
 | `src/tools/trustline.ts` | `ensureIouTrustline()` (TrustSet) + `optInToMpt()` (holder `MPTokenAuthorize`). |
 | `src/tools/swap.ts` | `ensureIouBalance()` — XRP→IOU `OfferCreate`, sized from the live book quote. |
@@ -388,8 +391,8 @@ pnpm agent:minimal   # minimal — generic primitives, the model builds the txs 
 Both read `ANTHROPIC_API_KEY`, `OWS_PASSPHRASE`, and `MERCHANT_URL` from `.env`. Without
 `ANTHROPIC_API_KEY`, `pnpm agent` falls back to the deterministic pipeline.
 
-- **Rails** (`packages/agent/src/loop.ts`) exposes **9 domain verbs**
-  (`discover_issuances`, `quote_resource`, `opt_in_mpt`, `ensure_trustline`,
+- **Rails** (`packages/agent/src/loop.ts`) exposes **domain verbs**
+  (`discover_issuances`, `discover_offers`, `quote_resource`, `opt_in_mpt`, `ensure_trustline`,
   `swap_for_currency`, `pay_via_mpp`, `confirm_receipt`, …). The *how* of each on-chain
   action — tx construction, AMM quoting, reserve sizing, idempotency, wait-for-validation
   — lives in code. The model only orchestrates: it decides the sequence, wires the 402
@@ -397,7 +400,7 @@ Both read `ANTHROPIC_API_KEY`, `OWS_PASSPHRASE`, and `MERCHANT_URL` from `.env`.
 
 - **Minimal** (`packages/agent/src/minimal.ts`) exposes only **generic primitives** —
   `xrpl_query` (read), `xrpl_sign_submit` (sign any tx via OWS), `faucet`, `http_get`,
-  `mpp_quote`, `mpp_settle`. There is **no** bespoke opt-in/trustline/swap/discovery code:
+  `mpp_discover`, `mpp_quote`, `mpp_settle`. There is **no** bespoke opt-in/trustline/swap code:
   the model reads the ledger, builds the XRPL transactions itself (as JSON), works out the
   ordering, and self-corrects from errors. OWS is the only hard guardrail.
 
