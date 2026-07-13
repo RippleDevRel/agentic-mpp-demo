@@ -21,3 +21,6 @@ minimumReleaseAgeExclude:
 # (pnpm 11 reads overrides here, not from package.json.)
 overrides:
   xrpl-mpp-sdk: 'file:./vendor/xrpl-mpp-sdk-0.1.0.tgz'
+  # Force the patched ws across the tree (GHSA-96hv-2xvq-fx4p, DoS). xrpl already
+  # uses 8.21.0; this bumps the copy viem/isows pulls in (8.20.1) to match.
+  ws: '>=8.21.0'
