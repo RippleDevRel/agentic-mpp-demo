@@ -85,6 +85,7 @@ export async function startServer(): Promise<{
         const handler = mppx['xrpl/charge']({
           amount: chargeAmount(ctx),
           currency: chargeCurrencyString(ctx),
+          recipient: store.address,
           description: sanitizeHeaderValue(`RWA issuance ${issuanceId} (${offer.units} units)`),
         })
 

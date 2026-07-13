@@ -38,7 +38,9 @@ async function main(): Promise<void> {
   // One-command demo defaults (override via real env / .env).
   setDefault('NETWORK', 'testnet')
   setDefault('PAYMENT_CURRENCY', 'RLUSD')
-  setDefault('MPP_SECRET_KEY', 'demo-mpp-secret')
+  // mppx >=0.8 requires the server secret to be >=32 bytes (it HMAC-binds challenge
+  // IDs). This is a local-demo placeholder, not a production secret.
+  setDefault('MPP_SECRET_KEY', 'demo-mpp-secret-key-for-local-testnet-only-0123456789')
   setDefault('RWA_PRICE', '10')
   setDefault('RWA_AVAILABLE_UNITS', '3')
   setDefault('ISSUANCE_INTERVAL_MS', '0')

@@ -175,9 +175,10 @@ export async function startChannelServer(): Promise<{
       if (path === '/subscribe') {
         const auth = req.headers.authorization
         if (!auth) {
-          // Advertise: 402 channel challenge with amount "0" (open commits nothing).
-          const handler = advertiseMppx['xrpl/channel']({
+          // Advertise: 402 session challenge with amount "0" (open commits nothing).
+          const handler = advertiseMppx['xrpl/session']({
             amount: '0',
+            currency: 'XRP',
             channelId: '',
             recipient: store.address,
             description: 'Open a PayChannel to subscribe to RWA MPT emissions',
@@ -203,8 +204,9 @@ export async function startChannelServer(): Promise<{
           return
         }
 
-        const handler = methodFor(publicKey)['xrpl/channel']({
+        const handler = methodFor(publicKey)['xrpl/session']({
           amount: '0',
+          currency: 'XRP',
           channelId: '',
           recipient: store.address,
           description: 'channel open',
@@ -246,8 +248,9 @@ export async function startChannelServer(): Promise<{
           return
         }
 
-        const handler = methodFor(rec.publicKey)['xrpl/channel']({
+        const handler = methodFor(rec.publicKey)['xrpl/session']({
           amount: priceDrops(ctx),
+          currency: 'XRP',
           channelId: rec.channelId,
           recipient: store.address,
           description: `RWA issuance ${issuanceId} (${offer.units} units)`,

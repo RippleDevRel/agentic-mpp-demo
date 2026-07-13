@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@agentic-mpp-demo-xrpl/shared": "workspace:*",
-    "mppx": "^0.7.0",
+    "mppx": "^0.8.5",
     "xrpl": "^4.0.0",
     "xrpl-mpp-sdk": "^0.1.0"
   }

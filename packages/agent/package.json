@@ -17,7 +17,7 @@
     "@noble/curves": "^1.6.0",
     "@open-wallet-standard/adapters": "^1.4.2",
     "@open-wallet-standard/core": "^1.4.2",
-    "mppx": "^0.7.0",
+    "mppx": "^0.8.5",
     "xrpl": "^4.0.0",
     "xrpl-mpp-sdk": "^0.1.0",
     "zod": "^4.4.3"

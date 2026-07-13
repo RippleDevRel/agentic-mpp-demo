@@ -61,14 +61,14 @@ importers:
         specifier: ^1.4.2
         version: 1.4.2
       mppx:
-        specifier: ^0.7.0
-        version: 0.7.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))
+        specifier: ^0.8.5
+        version: 0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))
       xrpl:
         specifier: ^4.0.0
         version: 4.6.0
       xrpl-mpp-sdk:
         specifier: file:../../vendor/xrpl-mpp-sdk-0.1.0.tgz
-        version: file:vendor/xrpl-mpp-sdk-0.1.0.tgz(mppx@0.7.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
+        version: file:vendor/xrpl-mpp-sdk-0.1.0.tgz(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -79,14 +79,14 @@ importers:
         specifier: workspace:*
         version: link:../shared
       mppx:
-        specifier: ^0.7.0
-        version: 0.7.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))
+        specifier: ^0.8.5
+        version: 0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))
       xrpl:
         specifier: ^4.0.0
         version: 4.6.0
       xrpl-mpp-sdk:
         specifier: file:../../vendor/xrpl-mpp-sdk-0.1.0.tgz
-        version: file:vendor/xrpl-mpp-sdk-0.1.0.tgz(mppx@0.7.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
+        version: file:vendor/xrpl-mpp-sdk-0.1.0.tgz(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
 
   packages/shared:
     dependencies:
@@ -95,7 +95,7 @@ importers:
         version: 4.6.0
       xrpl-mpp-sdk:
         specifier: file:../../vendor/xrpl-mpp-sdk-0.1.0.tgz
-        version: file:vendor/xrpl-mpp-sdk-0.1.0.tgz(mppx@0.7.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
+        version: file:vendor/xrpl-mpp-sdk-0.1.0.tgz(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
 
 packages:
 
@@ -930,8 +930,8 @@ packages:
   '@stablelib/base64@1.0.1':
     resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
 
-  '@stripe/stripe-js@9.7.0':
-    resolution: {integrity: sha512-r1ElolvWXM4aYnZZVHvKW3EDL8JcwEuIgTuWxlB5lvC+YsvjkQ0gX35x9d8dTDubX395fViLVqkaolVs1PmIQQ==}
+  '@stripe/stripe-js@9.8.0':
+    resolution: {integrity: sha512-DHJpol/98VKyojNSYmpkB5vOMnlf87hPe0wPxyaYTNiTMk5QjKMXDfSZLwGctYIXAgAWDFeRABc8lFAj0BELyw==}
     engines: {node: '>=12.16'}
 
   '@toon-format/toon@2.3.0':
@@ -1283,8 +1283,8 @@ packages:
     resolution: {integrity: sha512-im9DjEDQ55s9fL4EYzOAv0yMqmMBSZp6G0VvFyTMPKWxiSBHUj9NW/qqLmXUwXrrM7AvqSlTCfvqRb0cM8yYqw==}
     engines: {node: '>=0.10.0'}
 
-  incur@0.4.8:
-    resolution: {integrity: sha512-SjW2QNtY7Bcvqjj0KvOJ3qiuFATlC3mEpYQyUzWdLb9MAzakkQ1KQg5WZ/yy2tDGBmHLN/zUJNimIWEqkRfqdw==}
+  incur@0.4.13:
+    resolution: {integrity: sha512-BeKlYFLIsRCgC8IxsUd3S2/4kPeZaNf1Rbz+Kz41jQII4jOgr7j5w4KYe00aAEQa3V0Ur57BVxE5JDTx8L2s5Q==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -1367,15 +1367,15 @@ packages:
   mlly@1.8.2:
     resolution: {integrity: sha512-d+ObxMQFmbt10sretNDytwt85VrbkhhUA/JBGm1MPaWJ65Cl4wOgLaB1NYvJSZ0Ef03MMEU/0xpPMXUIQ29UfA==}
 
-  mppx@0.7.0:
-    resolution: {integrity: sha512-qOHQjD75wSHSZeXutngPXou8NEMIOw6RhZ/lQbo2JmDQWfOi40pLGpqXgHgwIjw4YcJHClFsI7mFXBK3Nj5WCQ==}
+  mppx@0.8.6:
+    resolution: {integrity: sha512-JND+libFbDer9V9oLwqohBF5TU+QNByPf7uKF6nlVniEJzmBTLpfnENO99K7PNBUZZzEOPIVjeNC1sF9FnJjUA==}
     hasBin: true
     peerDependencies:
       '@modelcontextprotocol/sdk': '>=1.25.0'
       elysia: '>=1'
       express: '>=5'
-      hono: '>=4.12.18'
-      viem: '>=2.51.0'
+      hono: '>=4.12.25'
+      viem: '>=2.54.0'
     peerDependenciesMeta:
       '@modelcontextprotocol/sdk':
         optional: true
@@ -1415,14 +1415,6 @@ packages:
 
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
-
-  ox@0.14.27:
-    resolution: {integrity: sha512-+xhLHo/f+f4BH121/1Pomm/1vgBBda1wYiFpTvjSo8o5OcEj76Pf1hGPJiepoYMTQoTm2SKdSBvWkFWk5l07PA==}
-    peerDependencies:
-      typescript: '>=5.4.0'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
 
   ox@0.14.29:
     resolution: {integrity: sha512-M5j87Ec4V99MQdRct/g09eWXW60g6zhHTUs1lr4deUtrPDnezBdCJTgKd7pxqTpSZBFveV0ALi9jMMuT1qKyNg==}
@@ -1809,10 +1801,10 @@ packages:
         optional: true
 
   xrpl-mpp-sdk@file:vendor/xrpl-mpp-sdk-0.1.0.tgz:
-    resolution: {integrity: sha512-U2gygIXwExkTBEtBLOW5JSZvjkZCqI4hV7uFD+pbrJUAy6T8JwABqPvbRGDc8y78Zbf2K3M1AVE9CBDcW0ploQ==, tarball: file:vendor/xrpl-mpp-sdk-0.1.0.tgz}
+    resolution: {integrity: sha512-FGxZizyCj7cfqwwP8qifdFb0f/Vhc5+CnCTv0Cp2mCG3N0w8xr84ZzIxsCVORFuL8Rf4YxUso+cThlJtHRyR8g==, tarball: file:vendor/xrpl-mpp-sdk-0.1.0.tgz}
     version: 0.1.0
     peerDependencies:
-      mppx: '>=0.4.0'
+      mppx: '>=0.8.0'
       xrpl: '>=4.0.0'
 
   xrpl@4.6.0:
@@ -2328,7 +2320,7 @@ snapshots:
 
   '@stablelib/base64@1.0.1': {}
 
-  '@stripe/stripe-js@9.7.0': {}
+  '@stripe/stripe-js@9.8.0': {}
 
   '@toon-format/toon@2.3.0': {}
 
@@ -2753,7 +2745,7 @@ snapshots:
     dependencies:
       safer-buffer: 2.1.2
 
-  incur@0.4.8:
+  incur@0.4.13:
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@modelcontextprotocol/server': 2.0.0-alpha.2(@cfworker/json-schema@4.1.1)
@@ -2821,11 +2813,12 @@ snapshots:
       pkg-types: 1.3.1
       ufo: 1.6.4
 
-  mppx@0.7.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)):
+  mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)):
     dependencies:
-      '@stripe/stripe-js': 9.7.0
-      incur: 0.4.8
-      ox: 0.14.27(typescript@5.9.3)(zod@4.4.3)
+      '@stripe/stripe-js': 9.8.0
+      eventsource-parser: 3.1.0
+      incur: 0.4.13
+      ox: 0.14.29(typescript@5.9.3)(zod@4.4.3)
       viem: 2.52.2(typescript@5.9.3)(zod@4.4.3)
       zod: 4.4.3
     optionalDependencies:
@@ -2858,21 +2851,6 @@ snapshots:
   once@1.4.0:
     dependencies:
       wrappy: 1.0.2
-
-  ox@0.14.27(typescript@5.9.3)(zod@4.4.3):
-    dependencies:
-      '@adraffy/ens-normalize': 1.11.1
-      '@noble/ciphers': 1.3.0
-      '@noble/curves': 1.9.1
-      '@noble/hashes': 1.8.0
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      abitype: 1.2.4(typescript@5.9.3)(zod@4.4.3)
-      eventemitter3: 5.0.1
-    optionalDependencies:
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - zod
 
   ox@0.14.29(typescript@5.9.3)(zod@4.4.3):
     dependencies:
@@ -3287,9 +3265,9 @@ snapshots:
 
   ws@8.21.0: {}
 
-  xrpl-mpp-sdk@file:vendor/xrpl-mpp-sdk-0.1.0.tgz(mppx@0.7.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0):
+  xrpl-mpp-sdk@file:vendor/xrpl-mpp-sdk-0.1.0.tgz(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0):
     dependencies:
-      mppx: 0.7.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))
+      mppx: 0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.25)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))
       xrpl: 4.6.0
       zod: 4.4.3
 

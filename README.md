@@ -266,7 +266,7 @@ but its only on-chain write path is OWS — itself bounded by the policy.
 packages/
   shared/    # config (networks, assets), env, xrpl helpers, logger, SDK re-exports
   merchant/  # RWA issuer + MPP charge server + delivery (bootstrap, server, issuer)
-    src/channel-server.ts  # channel-mode merchant (MPP `channel` intent, XRP)
+    src/channel-server.ts  # channel-mode merchant (MPP `session` intent, XRP PayChannel)
   agent/
     src/signer/         # OWS signing bridge (see common.ts for the shared interface)
       common.ts              # XrplSubmitSigner interface + shared options/helpers
@@ -429,13 +429,16 @@ in code; OWS catches the *dangerous* (out-of-policy) either way — not the *inc
 
 A different payment shape: instead of one on-chain payment per purchase, the agent locks
 XRP in an **XRPL Payment Channel** once and then **streams** purchases as off-ledger
-cumulative vouchers (claims) — pay-per-token micropayments, MPP `channel` intent.
+cumulative vouchers (claims) — pay-per-token micropayments. On the wire this is the
+canonical MPP **`session`** intent (mpp.dev's pay-as-you-go flow); the underlying mechanism
+is an XRPL Payment Channel, so the SDK keeps the "channel" name for its own API/exports and
+registers `channel` as a routing alias for older credentials.
 
 It stays merchant-driven (the merchant proposes the channel in a 402) and **XRP-only**
 (payment channels carry XRP, so there is no RLUSD swap/trustline here):
 
 1. The merchant issues **nothing** up front; `/catalog` carries a hint to `/subscribe`.
-2. The agent ventures to `/subscribe`, gets a **402 `channel` offer**, and opens a PayChannel
+2. The agent ventures to `/subscribe`, gets a **402 `session` offer**, and opens a PayChannel
    (e.g. 50 XRP) — the `PaymentChannelCreate` is **OWS-signed** and sent as the MPP `open`
    credential (the merchant submits it).
 3. The merchant then **starts issuing** RWA MPTs. The agent opts in and pays each with a
@@ -495,7 +498,7 @@ pnpm check:channel   # isolated live check: OWS opens a channel + signs a verifi
 | `MERCHANT_PORT` | merchant HTTP port |
 | `MERCHANT_URL` | the seller endpoint the agent is given (its only merchant locator; default `http://localhost:8787`) |
 | `RWA_PRICE`, `RWA_AVAILABLE_UNITS`, `RWA_ASSET_SCALE`, `RWA_METADATA` | RWA issuance + pricing |
-| `MPP_SECRET_KEY` | mppx server secret (merchant) |
+| `MPP_SECRET_KEY` | mppx server secret (merchant), **≥32 bytes** — e.g. `openssl rand -base64 32` |
 | `PAYMENT_CURRENCY` | what the merchant charges: `RLUSD` \| `XRP` |
 | `ANTHROPIC_API_KEY`, `AGENT_MODEL` | model loop (default model `sonnet`); omit key → deterministic pipeline |
 | `MAX_SPEND`, `AGENT_MAX_ITERATIONS` | per-tx XRP cap (enforced by the OWS policy at signing) + loop bound |
