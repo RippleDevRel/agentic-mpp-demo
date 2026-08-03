@@ -24,3 +24,11 @@ overrides:
   # Force the patched ws across the tree (GHSA-96hv-2xvq-fx4p, DoS). xrpl already
   # uses 8.21.0; this bumps the copy viem/isows pulls in (8.20.1) to match.
   ws: '>=8.21.0'
+  # Patch freshly-disclosed CVEs in transitive deps with safe minor/patch bumps.
+  # hono/fast-uri/body-parser come via @modelcontextprotocol/sdk (not exercised on
+  # our XRPL flows); postcss is dev-only via vite. (@hono/node-server needs a 1->2
+  # major and vite itself needs a vitest 2->3 major — both deferred.)
+  hono: '>=4.12.27'
+  fast-uri: '>=3.1.4 <4'
+  body-parser: '>=2.3.0'
+  postcss: '>=8.5.18'
