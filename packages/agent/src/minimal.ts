@@ -16,7 +16,7 @@ import { Challenge, Credential } from 'mppx'
 import { z } from 'zod'
 import { buildAgentContext } from './context'
 import { fetchMppOffers } from './tools/discovery'
-import { quoteResource } from './tools/mpp'
+import { challengeInvoiceId } from './tools/mpp'
 
 const TESTNET_FAUCET = 'https://faucet.altnet.rippletest.net/accounts'
 const SERVER = 'rwamin'
@@ -28,6 +28,12 @@ async function main(): Promise<void> {
   const { signer, network, merchantUrl, log } = deps
   const maxSpendXrp = store.maxSpendXrp
   const address = signer.address()
+
+  // The hardened MPP server binds a push-mode payment to its 402 challenge via
+  // InvoiceID. mpp_quote and mpp_settle must therefore use the SAME challenge:
+  // stash it here at quote time (keyed by url) and reuse it at settle time so the
+  // payment's InvoiceID = sha512half(challenge.id) matches what the server expects.
+  const pendingChallenges = new Map<string, ReturnType<typeof Challenge.fromResponse>>()
 
   const tools = [
     tool(
@@ -121,28 +127,41 @@ async function main(): Promise<void> {
     ),
     tool(
       'mpp_quote',
-      "Read an MPP resource's 402 challenge WITHOUT paying. Returns the payment terms: recipient, amount, and currency (XRP, or an IOU with currency code + issuer).",
+      "Read an MPP resource's 402 challenge WITHOUT paying. Returns the payment terms (recipient, amount, currency) AND an `invoiceId` — you MUST set it as the `InvoiceID` field on the Payment you build, or the merchant rejects it as unbound. Pay, then call mpp_settle with the SAME url.",
       { url: z.string() },
       async ({ url }) => {
-        const q = await quoteResource(url, log)
+        const res = await fetch(url)
+        if (res.status !== 402) return ok({ error: `expected a 402 quote, got ${res.status}` })
+        const challenge = Challenge.fromResponse(res)
+        pendingChallenges.set(url, challenge)
+        const req = challenge.request as { amount: string; currency: string; recipient: string }
+        const isXrp = req.currency === 'XRP'
+        const iou = isXrp
+          ? null
+          : (JSON.parse(req.currency) as { currency: string; issuer: string })
         return ok({
-          recipient: q.recipient,
-          amount: q.amount,
-          currencyKind: q.currency.kind,
-          ...(q.currency.kind === 'IOU'
-            ? { currency: q.currency.currency, issuer: q.currency.issuer }
-            : {}),
+          recipient: req.recipient,
+          amount: req.amount,
+          currencyKind: isXrp ? 'XRP' : 'IOU',
+          ...(iou ? { currency: iou.currency, issuer: iou.issuer } : {}),
+          invoiceId: challengeInvoiceId(challenge.id),
         })
       },
     ),
     tool(
       'mpp_settle',
-      'After you have signed+submitted the on-chain Payment, hand the merchant your payment tx hash to take delivery. Returns the delivery receipt.',
+      'After you have signed+submitted the on-chain Payment (with the InvoiceID from mpp_quote), hand the merchant your payment tx hash to take delivery. Reuses the challenge from your mpp_quote for the same url. Returns the delivery receipt.',
       { url: z.string(), paymentTxHash: z.string() },
       async ({ url, paymentTxHash }) => {
-        const res = await fetch(url)
-        if (res.status !== 402) return ok({ ok: false, error: `expected 402, got ${res.status}` })
-        const challenge = Challenge.fromResponse(res)
+        // Reuse the exact challenge the payment was bound to (fall back to a fresh
+        // fetch if the model settles without a prior quote — the server will then
+        // reject an unbound payment, which surfaces the mistake).
+        let challenge = pendingChallenges.get(url)
+        if (!challenge) {
+          const res = await fetch(url)
+          if (res.status !== 402) return ok({ ok: false, error: `expected 402, got ${res.status}` })
+          challenge = Challenge.fromResponse(res)
+        }
         const credential = Credential.serialize({
           challenge,
           payload: { type: 'hash', hash: paymentTxHash },
@@ -226,8 +245,8 @@ JSON you pass as txJson:
 - To obtain an IOU you don't hold, swap XRP for it with an immediate-or-cancel offer:
   {"TransactionType":"OfferCreate","TakerGets":"<maxXrpDrops>","TakerPays":{"currency":"<cur>","issuer":"<issuer>","value":"<amount>"},"Flags":131072}.
   TakerGets is your max XRP budget in drops (1 XRP = 1,000,000 drops); keep it safely under ${maxSpendXrp} XRP (leave room for the fee) or OWS rejects it. It fills at market and cancels the rest. Then check account_lines to confirm you received enough.
-- To pay an MPP resource: mpp_quote(url) for {recipient, amount, currency...}; build
-  {"TransactionType":"Payment","Destination":"<recipient>","Amount":<"drops" if XRP, else {"currency":"<cur>","issuer":"<issuer>","value":"<amount>"}>} and add "SendMax" equal to Amount for an IOU; xrpl_sign_submit it; then mpp_settle(url, <that tx hash>).
+- To pay an MPP resource: mpp_quote(url) for {recipient, amount, currency, invoiceId}; build
+  {"TransactionType":"Payment","Destination":"<recipient>","Amount":<"drops" if XRP, else {"currency":"<cur>","issuer":"<issuer>","value":"<amount>"}>,"InvoiceID":"<the invoiceId from mpp_quote>"} and add "SendMax" equal to Amount for an IOU; xrpl_sign_submit it; then mpp_settle(url, <that tx hash>). The InvoiceID binds the payment to the challenge — OMIT IT AND THE MERCHANT REJECTS THE PAYMENT.
 
 Discover what's on offer yourself: http_get(${merchantUrl}/catalog) lists items with issuanceId + endpoint (resolve the endpoint relative to ${merchantUrl}). Stop once you hold every offered issuance (verify with account_objects type=mptoken). Reason step by step; if OWS rejects a tx, read the reason and adjust.`
 }

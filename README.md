@@ -85,7 +85,9 @@ both keeping the key in the vault:
 
 The MPP payment is done in **push mode**: OWS signs the on-chain Payment, then the tx
 hash is handed to the SDK-powered merchant via an mppx credential — so the key stays in
-OWS while the merchant still verifies the payment.
+OWS while the merchant still verifies the payment. The Payment carries an `InvoiceID`
+(`sha512half(challenge.id)`) that binds it to that specific 402 challenge, so the hardened
+merchant won't accept an unrelated or replayed payment.
 
 ### Guardrails (enforced by OWS, in both modes)
 

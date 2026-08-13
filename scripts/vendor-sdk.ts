@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const SDK_REPO = 'https://github.com/krkmu/xrpl-mpp-sdk.git'
-const SDK_COMMIT = 'e3eb0612a2c07878e924b647782f18954c854aea'
+const SDK_COMMIT = 'd579e30eb3ef821f6e5600ec9dd90ae29137b568'
 const VENDOR_DIR = resolve('vendor')
 
 function run(cmd: string, args: string[], cwd?: string): void {

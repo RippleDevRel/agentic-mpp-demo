@@ -4,10 +4,21 @@
  * an OWS-signed XRPL Payment whose tx hash is handed to the merchant via an mppx
  * credential. The key stays in OWS; the merchant still verifies the payment.
  */
+import { createHash } from 'node:crypto'
 import type { Logger, NetworkConfig } from '@agentic-mpp-demo-xrpl/shared'
 import { Challenge, Credential } from 'mppx'
 import type { Amount } from 'xrpl'
 import type { XrplSubmitSigner } from '../signer/common'
+
+/**
+ * The `InvoiceID` that binds a push-mode Payment to a specific 402 challenge.
+ * The hardened MPP server rejects an unbound payment; it expects the challenge's
+ * explicit `invoiceId` when present, else `sha512half(challenge.id)` — matching
+ * the SDK's `challengeInvoiceId` (SHA-512 of the id, first 32 bytes, uppercase hex).
+ */
+export function challengeInvoiceId(challengeId: string): string {
+  return createHash('sha512').update(challengeId, 'utf8').digest('hex').slice(0, 64).toUpperCase()
+}
 
 export interface PaymentOutcome {
   paymentHash: string
@@ -95,17 +106,29 @@ export async function payViaMpp(
     recipient: req.recipient,
   })
 
+  // Bind the payment to THIS challenge so the hardened server accepts it: set the
+  // InvoiceID to the challenge's explicit invoiceId, else sha512half(challenge.id).
+  const explicitInvoiceId = (challenge.request as { methodDetails?: { invoiceId?: string } })
+    .methodDetails?.invoiceId
+  const invoiceId = explicitInvoiceId ?? challengeInvoiceId(challenge.id)
+
   // No app-level spend gate: a direct XRP payment over the cap is rejected by the
   // OWS policy at signing time (the executable spend-cap policy).
   const amount = toXrplAmount(currency, req.amount)
   const payment =
     typeof amount === 'string'
-      ? { TransactionType: 'Payment' as const, Destination: req.recipient, Amount: amount }
+      ? {
+          TransactionType: 'Payment' as const,
+          Destination: req.recipient,
+          Amount: amount,
+          InvoiceID: invoiceId,
+        }
       : {
           TransactionType: 'Payment' as const,
           Destination: req.recipient,
           Amount: amount,
           SendMax: amount,
+          InvoiceID: invoiceId,
         }
 
   const submitted = await signer.signAndSubmit(payment, { label: 'MPP Payment (push mode)' })

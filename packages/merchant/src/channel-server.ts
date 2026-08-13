@@ -84,6 +84,7 @@ export async function startChannelServer(): Promise<{
       channelMethod({
         publicKey: merchantPubKey,
         store: sharedStore,
+        storeDurability: 'process-local',
         wallet: ctx.wallet,
         network: cfg.network.sdkNetwork,
         rpcUrl: cfg.network.rpcUrl,
@@ -99,6 +100,7 @@ export async function startChannelServer(): Promise<{
     const method = channelMethod({
       publicKey,
       store: sharedStore,
+      storeDurability: 'process-local',
       wallet: ctx.wallet,
       network: cfg.network.sdkNetwork,
       rpcUrl: cfg.network.rpcUrl,

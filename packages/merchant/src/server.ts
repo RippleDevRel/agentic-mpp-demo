@@ -41,6 +41,8 @@ export async function startServer(): Promise<{
         network: cfg.network.sdkNetwork,
         rpcUrl: cfg.network.rpcUrl,
         store: Store.memory(),
+        // Single-instance demo: acknowledge the in-memory (non-shared) replay store.
+        storeDurability: 'process-local',
       }),
     ],
   })

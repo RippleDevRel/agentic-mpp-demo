@@ -1794,11 +1794,11 @@ packages:
         optional: true
 
   xrpl-mpp-sdk@file:vendor/xrpl-mpp-sdk-0.1.0.tgz:
-    resolution: {integrity: sha512-ueGDVIRwPO/pU2e+kuPdiB/aUcrSEqeiIJIODjGL2A9NsSCUq11YY8UiY36QqaRNXpBygsKqPOoIcb1KHeurBw==, tarball: file:vendor/xrpl-mpp-sdk-0.1.0.tgz}
+    resolution: {integrity: sha512-VBIOsapL3Oo6c/juIYzZ+bRVsEmW3ajPjC18LEDcG3FF9NV2yuGpvUXuQRmkZX9z8utcg3QpLUb7xS7RlZ7bnw==, tarball: file:vendor/xrpl-mpp-sdk-0.1.0.tgz}
     version: 0.1.0
     peerDependencies:
-      mppx: '>=0.8.0'
-      xrpl: '>=4.0.0'
+      mppx: '>=0.8.0 <0.9.0'
+      xrpl: '>=4.0.0 <5.0.0'
 
   xrpl@4.6.0:
     resolution: {integrity: sha512-0nXZfqDHRJ6bsDv1WtA9MdCYalMtXuxVa9mtLdqT3xypRKf2LwT5DbuGL/kHcVfuqk3B+ly+SFARlrnX+LHtRQ==}
