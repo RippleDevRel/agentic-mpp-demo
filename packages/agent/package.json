@@ -19,7 +19,7 @@
     "@open-wallet-standard/core": "^1.4.2",
     "mppx": "^0.8.5",
     "xrpl": "^4.0.0",
-    "xrpl-mpp-sdk": "^0.1.0",
+    "xrpl-mpp-sdk": "0.1.0-beta.1",
     "zod": "^4.4.3"
   }
 }
