@@ -534,7 +534,8 @@ pnpm check:channel   # isolated live check: OWS opens a channel + signs a verifi
    and `check-testnet`).
 4. **Account reserves** are sized explicitly (base + owner per trust line / MPT + swap
    + fees) before funding.
-5. **`xrpl-mpp-sdk` is consumed from npm** (`0.1.0-beta.1`), pinned while the SDK is in beta.
+5. **`xrpl-mpp-sdk` is consumed from npm**, tracking the `latest` tag (the SDK is in beta).
+   The lockfile pins the resolved version; `pnpm up xrpl-mpp-sdk` picks up a new release.
 6. **Testnet only.** No local/Docker sandbox: everything runs against XRPL testnet.
 
 ## Out of scope (future work)

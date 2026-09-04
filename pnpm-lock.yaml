@@ -71,8 +71,8 @@ importers:
         specifier: ^4.0.0
         version: 4.6.0
       xrpl-mpp-sdk:
-        specifier: 0.1.0-beta.1
-        version: 0.1.0-beta.1(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.33)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
+        specifier: latest
+        version: 0.1.0-beta.2(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.33)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -89,8 +89,8 @@ importers:
         specifier: ^4.0.0
         version: 4.6.0
       xrpl-mpp-sdk:
-        specifier: 0.1.0-beta.1
-        version: 0.1.0-beta.1(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.33)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
+        specifier: latest
+        version: 0.1.0-beta.2(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.33)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
 
   packages/shared:
     dependencies:
@@ -98,8 +98,8 @@ importers:
         specifier: ^4.0.0
         version: 4.6.0
       xrpl-mpp-sdk:
-        specifier: 0.1.0-beta.1
-        version: 0.1.0-beta.1(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.33)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
+        specifier: latest
+        version: 0.1.0-beta.2(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.33)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0)
 
 packages:
 
@@ -1792,8 +1792,9 @@ packages:
       utf-8-validate:
         optional: true
 
-  xrpl-mpp-sdk@0.1.0-beta.1:
-    resolution: {integrity: sha512-JE7j2cqoXuokqG92eNZgg/RKp2boCWCm035w/9V6m5toM7GGNyvTjxsyLmr9AUJN+lFw7g5mPdTDtRM1t8MNXA==}
+  xrpl-mpp-sdk@0.1.0-beta.2:
+    resolution: {integrity: sha512-dAQmTkgljG6+4DA6Rt27c1UI++vASsh90x+NBXxxr5+LiV+1GfsV3GUyD36Wv2833d6fLQZm3mtmNsnhbi7SSg==}
+    engines: {node: '>=20'}
     peerDependencies:
       mppx: '>=0.8.0 <0.9.0'
       xrpl: '>=4.0.0 <5.0.0'
@@ -3254,7 +3255,7 @@ snapshots:
 
   ws@8.21.0: {}
 
-  xrpl-mpp-sdk@0.1.0-beta.1(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.33)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0):
+  xrpl-mpp-sdk@0.1.0-beta.2(mppx@0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.33)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3)))(xrpl@4.6.0):
     dependencies:
       mppx: 0.8.6(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(express@5.2.1)(hono@4.12.33)(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@4.4.3))
       xrpl: 4.6.0
