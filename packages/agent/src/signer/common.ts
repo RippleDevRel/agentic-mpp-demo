@@ -40,6 +40,15 @@ export interface XrplSubmitSigner {
   address(): string
   /** Autofill, OWS-sign, broadcast, and wait for validation. Throws unless tesSUCCESS. */
   signAndSubmit(tx: SignableTx, opts?: { label?: string }): Promise<SubmitResult>
+  /**
+   * Autofill + OWS-sign a tx into a submittable blob WITHOUT broadcasting — the
+   * counterparty submits it. Present ONLY on the recovery signer (OwsXrplSigner),
+   * which sets the recovered `SigningPubKey` as a VALUE. The native signer relies
+   * on OWS injecting that key during `signAndSend`, so it cannot hand back a blob
+   * (this stays `undefined` there). Needed for the channel `open` blob and for MPP
+   * charge PULL mode (the merchant submits the agent's signed Payment).
+   */
+  signToBlob?(tx: SignableTx): Promise<{ blob: string; hash: string }>
 }
 
 /** Poll `tx` until the ledger validates `hash`, returning its on-chain result. */

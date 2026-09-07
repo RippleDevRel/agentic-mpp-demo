@@ -1,8 +1,12 @@
 /**
  * MPP client tools: read a resource's HTTP 402 to learn the payment terms
- * (recipient, amount, currency, issuer) without paying, and pay in PUSH mode —
- * an OWS-signed XRPL Payment whose tx hash is handed to the merchant via an mppx
- * credential. The key stays in OWS; the merchant still verifies the payment.
+ * (recipient, amount, currency, issuer) without paying, and pay in one of the two
+ * MPP charge modes — both keeping the key in OWS:
+ *  - PUSH (default): OWS signs + broadcasts the XRPL Payment, then hands the tx
+ *    hash to the merchant via an mppx credential (`type: 'hash'`).
+ *  - PULL: OWS signs the Payment into a blob but does NOT broadcast; the blob is
+ *    handed to the merchant (`type: 'transaction'`), which submits it on-chain.
+ * Either way the merchant verifies the payment and the key never leaves OWS.
  */
 import { createHash } from 'node:crypto'
 import type { Logger, NetworkConfig } from '@agentic-mpp-demo-xrpl/shared'
@@ -24,6 +28,15 @@ export interface PaymentOutcome {
   paymentHash: string
   delivered: unknown
 }
+
+/**
+ * MPP charge payment mode:
+ *  - `push`: the agent submits the Payment itself, then presents the tx hash.
+ *  - `pull`: the agent presents a signed-but-unbroadcast Payment blob; the
+ *    merchant submits it. Requires a signer that can produce such a blob
+ *    (the OWS recovery signer — `signerKind: 'channel'`).
+ */
+export type PayMode = 'push' | 'pull'
 
 /** Payment currency as learned from the 402 — never from local config. */
 export type ParsedCurrency = { kind: 'XRP' } | { kind: 'IOU'; currency: string; issuer: string }
@@ -75,16 +88,21 @@ export async function quoteResource(url: string, log: Logger): Promise<ResourceQ
 }
 
 /**
- * Pay an MPP-protected resource in PUSH mode while keeping the key in OWS:
- * read the 402 challenge, build + OWS-sign + submit the XRPL Payment, then hand
- * the tx hash to the SDK-powered server via an mppx credential. No private key
- * leaves OWS, and the SDK server still verifies the on-chain payment.
+ * Pay an MPP-protected resource while keeping the key in OWS: read the 402
+ * challenge, build + OWS-sign the XRPL Payment, and hand the SDK-powered server a
+ * credential it verifies. The `mode` picks who broadcasts:
+ *  - `push` (default): the agent submits the Payment and presents its tx hash.
+ *  - `pull`: the agent presents the signed blob unbroadcast; the merchant submits
+ *    it. Needs a signer that can hand back a blob (the OWS recovery signer).
+ * No private key leaves OWS in either mode, and the SDK server still verifies the
+ * on-chain payment.
  */
 export async function payViaMpp(
   signer: XrplSubmitSigner,
   network: NetworkConfig,
   url: string,
   log: Logger,
+  mode: PayMode = 'push',
 ): Promise<PaymentOutcome> {
   log.mpp('→ GET (attempt resource)', { url })
   const first = await fetch(url)
@@ -131,22 +149,38 @@ export async function payViaMpp(
           InvoiceID: invoiceId,
         }
 
-  const submitted = await signer.signAndSubmit(payment, { label: 'MPP Payment (push mode)' })
-
   const source = `did:pkh:xrpl:${network.sdkNetwork}:${signer.address()}`
-  const credential = Credential.serialize({
-    challenge,
-    payload: { type: 'hash', hash: submitted.hash },
-    source,
-  } as never)
 
-  log.mpp('submitting MPP credential (tx hash) to merchant')
-  log.mpp('→ GET (Authorization: MPP credential)', {
-    url,
-    source,
-    paymentHash: submitted.hash,
-    credential,
-  })
+  // PUSH: broadcast the Payment ourselves, present the tx hash. PULL: OWS-sign the
+  // Payment into a blob but leave it unbroadcast — the merchant submits it.
+  let paymentHash: string
+  let credential: string
+  if (mode === 'pull') {
+    if (!signer.signToBlob) {
+      throw new Error(
+        'pull mode requires the OWS recovery signer (signerKind: "channel"), which can hand back an unbroadcast signed blob',
+      )
+    }
+    const signed = await signer.signToBlob(payment)
+    paymentHash = signed.hash
+    log.mpp('OWS-signed Payment blob (pull mode) — merchant will submit it', { paymentHash })
+    credential = Credential.serialize({
+      challenge,
+      payload: { type: 'transaction', blob: signed.blob },
+      source,
+    } as never)
+  } else {
+    const submitted = await signer.signAndSubmit(payment, { label: 'MPP Payment (push mode)' })
+    paymentHash = submitted.hash
+    credential = Credential.serialize({
+      challenge,
+      payload: { type: 'hash', hash: submitted.hash },
+      source,
+    } as never)
+  }
+
+  log.mpp('submitting MPP credential to merchant', { mode })
+  log.mpp('→ GET (Authorization: MPP credential)', { url, source, paymentHash, credential })
   const second = await fetch(url, { headers: { Authorization: credential } })
   const body = await second.json().catch(() => null)
   log.mpp('← settlement response', { status: second.status, body: JSON.stringify(body) })
@@ -155,7 +189,7 @@ export async function payViaMpp(
   }
   log.mpp('MPP payment accepted; merchant delivering')
   return {
-    paymentHash: submitted.hash,
+    paymentHash,
     delivered: (body as { delivered?: unknown })?.delivered ?? body,
   }
 }

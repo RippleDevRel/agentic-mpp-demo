@@ -83,11 +83,22 @@ both keeping the key in the vault:
   `SigningPubKey`, signs the tx's signing hash via `signHash`, and broadcasts the
   assembled blob itself via xrpl.js.
 
-The MPP payment is done in **push mode**: OWS signs the on-chain Payment, then the tx
-hash is handed to the SDK-powered merchant via an mppx credential — so the key stays in
-OWS while the merchant still verifies the payment. The Payment carries an `InvoiceID`
-(`sha512half(challenge.id)`) that binds it to that specific 402 challenge, so the hardened
-merchant won't accept an unrelated or replayed payment.
+The MPP charge leg runs in **push mode** by default: OWS signs the on-chain Payment and
+the agent broadcasts it, then hands the tx hash to the SDK-powered merchant via an mppx
+credential (`type: "hash"`) — so the key stays in OWS while the merchant still verifies the
+payment. The Payment carries an `InvoiceID` (`sha512half(challenge.id)`) that binds it to
+that specific 402 challenge, so the hardened merchant won't accept an unrelated or replayed
+payment.
+
+**Pull mode** is the mirror image and also supported (`payViaMpp(..., 'pull')`, exercised by
+`pnpm check:pull`): OWS signs the same challenge-bound Payment into a blob but the agent does
+**not** broadcast it — it hands the signed blob to the merchant (`type: "transaction"`), which
+submits it on-chain before delivering. The key still never leaves OWS. Producing an
+unbroadcast-but-submittable blob needs the recovered `SigningPubKey` as a VALUE, so pull uses
+the same OWS recovery signer as channel mode (`signerKind: "channel"`). One consequence: that
+path signs via `signHash`, so — exactly like channel vouchers — the pull Payment is **not**
+seen by the per-tx executable spend policy, which only runs on the native `signAndSend` path
+(push). See [Known constraints](#known-constraints).
 
 ### Guardrails (enforced by OWS, in both modes)
 
@@ -316,7 +327,7 @@ Everything the buyer agent does lives in `packages/agent/`. Read it in this orde
 | `src/tools/funding.ts` | Reserve sizing + faucet funding. |
 | `src/tools/trustline.ts` | `ensureIouTrustline()` (TrustSet) + `optInToMpt()` (holder `MPTokenAuthorize`). |
 | `src/tools/swap.ts` | `ensureIouBalance()` — XRP→IOU `OfferCreate`, sized from the live book quote. |
-| `src/tools/mpp.ts` | `quoteResource()` (read a 402) + `payViaMpp()` (push-mode pay + credential). |
+| `src/tools/mpp.ts` | `quoteResource()` (read a 402) + `payViaMpp()` (charge pay + credential; `push` default / `pull` opt-in). |
 | `src/channel.ts` | **Channel-mode** buyer (`pnpm agent:channel`): open a PayChannel, stream voucher purchases, close. |
 | `src/tools/channel.ts` | Channel ops: open / sign voucher / close (used by the driver + `check:channel`). |
 | `src/signer/ows-channel-signer.ts` | OWS-signed PayChannel claims (`signClaim`) — byte-identical to the SDK, verified by `verifyPaymentChannelClaim`. |
@@ -369,12 +380,15 @@ pnpm install               # pulls xrpl-mpp-sdk from npm
 cp .env.example .env       # set ANTHROPIC_API_KEY (optional), OWS_PASSPHRASE, etc.
 
 pnpm check:testnet         # verify the XRP/RLUSD AMM route is reachable
-pnpm demo                  # boot merchant + agent, acquire end-to-end
+pnpm demo                  # boot merchant + agent, acquire end-to-end (charge, PUSH mode)
+pnpm check:pull            # boot merchant + buy one MPT in charge PULL mode (agent signs, merchant submits)
 ```
 
 `pnpm demo` boots the merchant, points the agent at it, and runs the autonomous
 acquisition. With `ANTHROPIC_API_KEY` set, a Claude model drives the tool-use loop;
 without one it runs the same tools through a deterministic pipeline (handy for CI).
+`pnpm check:pull` is the deterministic mirror for the charge **pull** mode (XRP pricing):
+the agent OWS-signs the Payment but the merchant submits it on-chain.
 
 ## Two agent modes: "rails" vs "minimal"
 
@@ -517,13 +531,19 @@ pnpm check:channel   # isolated live check: OWS opens a channel + signs a verifi
 
 ## Known constraints
 
-1. **Signer integration is the central task.** Ordinary writes use OWS 1.4.2 `signAndSend`
-   (OWS injects the pubkey + broadcasts). Channel mode still recovers the OWS public key
-   (OWS does not expose it), signs the tx hash via `signHash`, and broadcasts the blob
-   ourselves — the only path that also yields the unbroadcast channel `open` blob; the MPP
-   leg uses push mode. The clean upstream fix is exposing the account public key (OWS 1.4.2
-   fixed token signing but not pubkey exposure) or an external-signer constructor on the SDK
-   `Wallet` (`Wallet.fromSigner`), which would let channel mode drop the recovery too.
+1. **Signer integration is the central task.** Ordinary writes (including the default charge
+   PUSH mode) use OWS 1.4.2 `signAndSend` (OWS injects the pubkey + broadcasts). Channel mode
+   — and charge PULL mode (`pnpm check:pull`) — instead recovers the OWS public key (OWS does
+   not expose it), signs the tx hash via `signHash`, and assembles the blob itself: the only
+   path that yields an unbroadcast-but-submittable blob (the channel `open` blob and the
+   pull-mode Payment the merchant submits). Because that path signs a bare hash, the per-tx
+   executable spend policy — which decodes `transaction.raw_hex` on the `signAndSend` path —
+   does **not** see pull-mode Payments or channel vouchers (channel spend is bounded by the
+   channel capacity instead; a policy-gated pull would need OWS `signTransaction`, which does
+   see the tx, plus building the blob from its signature). The clean upstream fix is exposing
+   the account public key (OWS 1.4.2 fixed token signing but not pubkey exposure) or an
+   external-signer constructor on the SDK `Wallet` (`Wallet.fromSigner`), which would let both
+   drop the recovery.
 2. **RLUSD funding on testnet** is not scriptable, so the agent self-funds in XRP and
    swaps to RLUSD on the existing testnet AMM (no operator liquidity setup).
 3. **RLUSD identifiers — merchant vs agent.** The *merchant* charges in RLUSD using the
