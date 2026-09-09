@@ -32,18 +32,25 @@ export interface AgentStore {
   acquired: string[]
 }
 
-function storePath(network: NetworkName): string {
-  return resolve('.data', `agent.${network}.json`)
+/**
+ * Store file path, scoped by BOTH network and wallet name. Keying by network
+ * alone let two profiles that share a network collide — e.g. the `pnpm demo`
+ * wallet (`agent-treasury-demo`, `.ows-demo` vault) and an ambient-`.env` run
+ * (`agent-treasury`, `~/.ows`) overwrote each other's capability, so whichever
+ * ran last left the other pointing at a wallet its vault doesn't hold.
+ */
+function storePath(network: NetworkName, walletName: string): string {
+  return resolve('.data', `agent.${network}.${walletName}.json`)
 }
 
-export function loadAgentStore(network: NetworkName): AgentStore | undefined {
-  const path = storePath(network)
+export function loadAgentStore(network: NetworkName, walletName: string): AgentStore | undefined {
+  const path = storePath(network, walletName)
   if (!existsSync(path)) return undefined
   return JSON.parse(readFileSync(path, 'utf8')) as AgentStore
 }
 
 export function saveAgentStore(store: AgentStore): void {
-  const path = storePath(store.network)
+  const path = storePath(store.network, store.walletName)
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, `${JSON.stringify(store, null, 2)}\n`, 'utf8')
 }

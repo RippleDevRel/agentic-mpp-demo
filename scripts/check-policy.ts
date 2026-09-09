@@ -34,9 +34,19 @@ async function attempt(signer: XrplSubmitSigner, label: string, tx: Tx): Promise
 }
 
 async function main(): Promise<void> {
+  const cap = Number(process.env.MAX_SPEND ?? '10')
+  // Probe in a DEDICATED vault + cap-scoped wallet so the enforced policy cap is
+  // always exactly `cap` — never the ambient wallet's baked-in cap (whose policy
+  // was fixed at its own creation, which would silently probe the wrong number).
+  // Set before buildAgentContext loads .env; Node's env-file loader never overrides
+  // an already-set var, so these win over an empty `.env` OWS_VAULT_PATH. The fixed
+  // passphrase only encrypts this throwaway probe vault (faucet funds), not a real key.
+  process.env.OWS_VAULT_PATH ||= '.ows-policy-probe'
+  process.env.OWS_WALLET_NAME ||= `policy-probe-cap${cap}`
+  process.env.OWS_PASSPHRASE ||= 'policy-probe-passphrase'
+
   const { deps } = await buildAgentContext()
   const { signer, network, log } = deps
-  const cap = Number(process.env.MAX_SPEND ?? '10')
   log.step('policy probe', { maxSpendXrp: cap, address: signer.address() })
 
   // Fund well above the cap so a block can only be the policy, never funds.

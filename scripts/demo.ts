@@ -67,7 +67,13 @@ async function main(): Promise<void> {
     deps.log.info('agent goal', { goal })
 
     if (getEnv('ANTHROPIC_API_KEY')) {
+      // The loop persists each confirmed acquisition on the store; require at
+      // least one NEW one so a model run that bought nothing cannot pass.
+      const acquiredBefore = store.acquired.length
       await runAgentLoop(deps, store, goal)
+      if (store.acquired.length <= acquiredBefore) {
+        throw new Error('demo failed: model loop acquired nothing')
+      }
     } else {
       deps.log.warn('ANTHROPIC_API_KEY not set — deterministic pipeline (no model in the loop)')
       const results = await runAcquisition(deps, store)

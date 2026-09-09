@@ -9,6 +9,18 @@
 import type { Logger, NetworkConfig } from '@agentic-mpp-demo-xrpl/shared'
 import type { Client, SubmittableTransaction } from 'xrpl'
 
+/**
+ * MPP on-chain attribution `SourceTag`, applied by default to every tx these OWS
+ * signers submit so the agent's activity is trackable on-ledger as MPP traffic —
+ * the same tag the SDK stamps on everything IT submits (`MPP_SOURCE_TAG`). We
+ * mirror it here because the agent hand-rolls its transactions through OWS (the
+ * key stays in the vault), so they never pass through the SDK's own defaulting.
+ * A tx that already carries a `SourceTag` (e.g. one a 402 challenge requires)
+ * keeps it. NOTE: the SDK does not re-export its `MPP_SOURCE_TAG` constant, so
+ * the value (593184257) is duplicated here; keep it in sync until it is exported.
+ */
+export const MPP_SOURCE_TAG = 593184257
+
 /** Construction options shared by both OWS signers. */
 export interface OwsSignerOptions {
   /** OWS wallet name or id. */

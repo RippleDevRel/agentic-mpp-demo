@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto'
 import type { Logger, NetworkConfig } from '@agentic-mpp-demo-xrpl/shared'
 import { Challenge, Credential } from 'mppx'
 import type { Amount } from 'xrpl'
+import type { PaymentMode } from 'xrpl-mpp-sdk'
 import type { XrplSubmitSigner } from '../signer/common'
 
 /**
@@ -30,13 +31,13 @@ export interface PaymentOutcome {
 }
 
 /**
- * MPP charge payment mode:
+ * MPP charge payment mode (the SDK's `PaymentMode`, re-exported for callers):
  *  - `push`: the agent submits the Payment itself, then presents the tx hash.
  *  - `pull`: the agent presents a signed-but-unbroadcast Payment blob; the
  *    merchant submits it. Requires a signer that can produce such a blob
  *    (the OWS recovery signer — `signerKind: 'channel'`).
  */
-export type PayMode = 'push' | 'pull'
+export type PayMode = PaymentMode
 
 /** Payment currency as learned from the 402 — never from local config. */
 export type ParsedCurrency = { kind: 'XRP' } | { kind: 'IOU'; currency: string; issuer: string }
@@ -126,9 +127,15 @@ export async function payViaMpp(
 
   // Bind the payment to THIS challenge so the hardened server accepts it: set the
   // InvoiceID to the challenge's explicit invoiceId, else sha512half(challenge.id).
-  const explicitInvoiceId = (challenge.request as { methodDetails?: { invoiceId?: string } })
-    .methodDetails?.invoiceId
-  const invoiceId = explicitInvoiceId ?? challengeInvoiceId(challenge.id)
+  const methodDetails = (
+    challenge.request as { methodDetails?: { invoiceId?: string; sourceTag?: number } }
+  ).methodDetails
+  const invoiceId = methodDetails?.invoiceId ?? challengeInvoiceId(challenge.id)
+
+  // On-chain attribution: honor a challenge-required SourceTag if present; otherwise
+  // the OWS signer defaults the MPP tag (MPP_SOURCE_TAG), so this leg is left unset.
+  const sourceTagField =
+    methodDetails?.sourceTag !== undefined ? { SourceTag: methodDetails.sourceTag } : {}
 
   // No app-level spend gate: a direct XRP payment over the cap is rejected by the
   // OWS policy at signing time (the executable spend-cap policy).
@@ -140,6 +147,7 @@ export async function payViaMpp(
           Destination: req.recipient,
           Amount: amount,
           InvoiceID: invoiceId,
+          ...sourceTagField,
         }
       : {
           TransactionType: 'Payment' as const,
@@ -147,6 +155,7 @@ export async function payViaMpp(
           Amount: amount,
           SendMax: amount,
           InvoiceID: invoiceId,
+          ...sourceTagField,
         }
 
   const source = `did:pkh:xrpl:${network.sdkNetwork}:${signer.address()}`

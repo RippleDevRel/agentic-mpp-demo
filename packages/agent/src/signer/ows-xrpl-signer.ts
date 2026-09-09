@@ -17,6 +17,7 @@ import { secp256k1 } from '@noble/curves/secp256k1'
 import { getWallet, signHash } from '@open-wallet-standard/core'
 import { type Client, encode, encodeForSigning, hashes } from 'xrpl'
 import {
+  MPP_SOURCE_TAG,
   type OwsSignerOptions,
   type SignableTx,
   type SubmitResult,
@@ -151,6 +152,8 @@ export class OwsXrplSigner implements XrplSubmitSigner {
     const prepared = (await client.autofill({
       Account: this.address(),
       ...tx,
+      // Default the MPP attribution SourceTag; an explicit one already on the tx wins.
+      SourceTag: tx.SourceTag ?? MPP_SOURCE_TAG,
       SigningPubKey: this.publicKey(),
     } as never)) as Record<string, unknown>
     delete prepared.TxnSignature

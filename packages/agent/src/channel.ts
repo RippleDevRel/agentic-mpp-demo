@@ -162,9 +162,16 @@ async function main(): Promise<void> {
     })
   }
 
-  // 5. Close: merchant redeems the latest voucher, agent closes (tfClose).
+  // 5. Close: the merchant redeems the latest voucher AND closes the channel in
+  // one destination-initiated PaymentChannelClaim (tfClose). The agent then tries
+  // its own tfClose as a fallback — if the merchant already closed, that hits
+  // tecNO_TARGET (no such channel), which is expected, so it's best-effort.
   await fetch(`${merchantUrl}/close?channelId=${channelId}`).catch(() => null)
-  await closeChannel(signer, channelId, log)
+  await closeChannel(signer, channelId, log).catch((e) =>
+    log.info('agent close skipped — channel already closed by the merchant', {
+      msg: e instanceof Error ? e.message : String(e),
+    }),
+  )
 
   log.info('channel run complete', {
     acquired: acquired.size,

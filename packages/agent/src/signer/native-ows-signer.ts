@@ -15,6 +15,7 @@ import { withClient } from '@agentic-mpp-demo-xrpl/shared'
 import { getWallet, signAndSend } from '@open-wallet-standard/core'
 import { type Client, encode } from 'xrpl'
 import {
+  MPP_SOURCE_TAG,
   type OwsSignerOptions,
   type SignableTx,
   type SubmitResult,
@@ -66,6 +67,9 @@ export class NativeOwsSigner implements XrplSubmitSigner {
         const prepared = (await client.autofill({
           Account: this.address(),
           ...tx,
+          // Default the MPP attribution SourceTag; an explicit one (e.g. required
+          // by a 402 challenge) already on the tx wins.
+          SourceTag: tx.SourceTag ?? MPP_SOURCE_TAG,
         } as never)) as Record<string, unknown>
         // OWS injects SigningPubKey and signs; an unsigned tx must carry neither it
         // nor a signature, and testnet rejects a NetworkID for its small network id.

@@ -11,8 +11,6 @@ import {
 } from '@agentic-mpp-demo-xrpl/shared'
 import { BASE_RESERVE_DROPS, fromDrops, OWNER_RESERVE_DROPS, toDrops } from 'xrpl-mpp-sdk'
 
-const TESTNET_FAUCET = 'https://faucet.altnet.rippletest.net/accounts'
-
 export interface FundingPlan {
   /** Owner objects the agent will create (RLUSD trustline + RWA MPT holding). */
   ownerObjects: number
@@ -75,8 +73,8 @@ export async function ensureFunded(
   })
 }
 
-async function pullFaucet(address: string, _network: NetworkConfig): Promise<void> {
-  const res = await fetch(TESTNET_FAUCET, {
+async function pullFaucet(address: string, network: NetworkConfig): Promise<void> {
+  const res = await fetch(network.faucetUrl, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ destination: address }),

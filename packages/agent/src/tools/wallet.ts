@@ -89,7 +89,7 @@ export async function ensureAgentWallet(
   const vaultPath = getEnv('OWS_VAULT_PATH')
   const walletName = getEnv('OWS_WALLET_NAME') ?? 'agent-treasury'
 
-  const existing = loadAgentStore(network.name)
+  const existing = loadAgentStore(network.name, walletName)
   if (existing) {
     log.ows('reusing OWS agent wallet', { address: existing.address })
     // Backfill for stores written before maxSpendXrp was persisted; the active

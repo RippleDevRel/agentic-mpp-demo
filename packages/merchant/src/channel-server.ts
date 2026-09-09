@@ -10,9 +10,11 @@
  * the latest voucher with `closeFromStore`.
  *
  * Faithful to MPP: real mppx Challenge/Credential envelope + the SDK channel
- * intent. The only bespoke part is wiring an unknown agent's channel public key
- * (learned from the `open` credential's PaymentChannelCreate blob) into a
- * per-channel SDK method instance sharing one Store.
+ * intent. A single SDK method instance serves every funder — since SDK 0.1.0 the
+ * server reads each channel's verification key from the ledger (its on-chain
+ * `PublicKey`) rather than being configured with one, so it no longer needs a
+ * per-funder instance. The `open` credential's PaymentChannelCreate blob is still
+ * decoded to record the funder + channel key for the cooperative on-chain redeem.
  *
  * Run: pnpm merchant:channel
  */
@@ -21,7 +23,7 @@ import { getEnvNumber, withClient } from '@agentic-mpp-demo-xrpl/shared'
 import { Credential } from 'mppx'
 import { generate } from 'mppx/discovery'
 import { Mppx, Store } from 'mppx/server'
-import { decode, Wallet as XrplWallet } from 'xrpl'
+import { decode } from 'xrpl'
 import { toDrops } from 'xrpl-mpp-sdk'
 import { channel as channelMethod, closeFromStore } from 'xrpl-mpp-sdk/channel/server'
 import { findOffer } from './catalog'
@@ -60,11 +62,9 @@ export async function startChannelServer(): Promise<{
 }> {
   const ctx = await buildMerchant()
   const { cfg, store, log } = ctx
-  // One Store shared by every per-channel method instance (cumulative + replay).
+  // One Store, cumulative + replay for every channel this server verifies.
   const sharedStore = Store.memory()
   const channels = new Map<string, ChannelRecord>()
-  // Placeholder pubkey for the advertise-only 402 (createChallenge ignores it).
-  const merchantPubKey = XrplWallet.fromSeed(store.seed).publicKey
 
   // Server-initiated session close: if the agent disconnects without closing, the
   // SDK's auto-close sweeper claims the latest voucher on-chain once the channel
@@ -77,72 +77,41 @@ export async function startChannelServer(): Promise<{
   const idleMs = getEnvNumber('CHANNEL_IDLE_MS', 120000)
   const sweepIntervalMs = getEnvNumber('CHANNEL_SWEEP_MS', 10000)
 
-  // Advertise-only instance for the first 402 (no channel yet, no sweeper).
-  const advertiseMppx = Mppx.create({
-    secretKey: requireSecret(),
-    methods: [
-      channelMethod({
-        publicKey: merchantPubKey,
-        store: sharedStore,
-        storeDurability: 'process-local',
-        wallet: ctx.wallet,
-        network: cfg.network.sdkNetwork,
-        rpcUrl: cfg.network.rpcUrl,
-        autoClose: false,
-      }),
-    ],
-  })
-
-  // One LONG-LIVED instance per channel public key: its in-memory activeChannels
-  // (populated when it verifies the open + vouchers) is what the auto-close sweeper
-  // scans, so the instance must persist across requests — not be rebuilt per call.
-  function buildChannelMppx(publicKey: string) {
-    const method = channelMethod({
-      publicKey,
-      store: sharedStore,
-      storeDurability: 'process-local',
-      wallet: ctx.wallet,
-      network: cfg.network.sdkNetwork,
-      rpcUrl: cfg.network.rpcUrl,
-      autoClose: {
-        idleMs,
-        sweepIntervalMs,
-        onClose: ({
+  // A SINGLE long-lived method instance serves every funder. Since SDK 0.1.0 the
+  // server takes each channel's verification key from the ledger (no configured
+  // `publicKey`), so one instance verifies opens + vouchers from any number of
+  // unrelated funders; its auto-close sweeper registers each channel under its own
+  // on-chain key. It must persist across requests (its in-memory activeChannels is
+  // what the sweeper scans), so it is built once at startup, not per call.
+  const channelSvc = channelMethod({
+    store: sharedStore,
+    storeDurability: 'process-local',
+    wallet: ctx.wallet,
+    network: cfg.network.sdkNetwork,
+    rpcUrl: cfg.network.rpcUrl,
+    autoClose: {
+      idleMs,
+      sweepIntervalMs,
+      onClose: ({
+        channelId,
+        cumulative,
+        txHash,
+      }: {
+        channelId: string
+        cumulative: string
+        txHash: string
+      }) => {
+        log.mpp('AUTO-CLOSE: idle channel claimed on-chain by merchant', {
           channelId,
-          cumulative,
-          txHash,
-        }: {
-          channelId: string
-          cumulative: string
-          txHash: string
-        }) => {
-          log.mpp('AUTO-CLOSE: idle channel claimed on-chain by merchant', {
-            channelId,
-            cumulativeXrp: Number(cumulative) / 1e6,
-          })
-          log.txn(
-            'PaymentChannelClaim (auto-close redeem)',
-            txHash,
-            cfg.network.explorerTx?.(txHash),
-          )
-        },
-        onError: ({ channelId, error }: { channelId: string; error: Error }) =>
-          log.warn('auto-close attempt failed', { channelId, msg: error.message }),
+          cumulativeXrp: Number(cumulative) / 1e6,
+        })
+        log.txn('PaymentChannelClaim (auto-close redeem)', txHash, cfg.network.explorerTx?.(txHash))
       },
-    })
-    return {
-      mppx: Mppx.create({ secretKey: requireSecret(), methods: [method] }),
-      dispose: method.dispose,
-    }
-  }
-  const methods = new Map<string, ReturnType<typeof buildChannelMppx>>()
-  const methodFor = (publicKey: string) => {
-    const cached = methods.get(publicKey)
-    if (cached) return cached.mppx
-    const built = buildChannelMppx(publicKey)
-    methods.set(publicKey, built)
-    return built.mppx
-  }
+      onError: ({ channelId, error }: { channelId: string; error: Error }) =>
+        log.warn('auto-close attempt failed', { channelId, msg: error.message }),
+    },
+  })
+  const mppx = Mppx.create({ secretKey: requireSecret(), methods: [channelSvc] })
 
   const port = getEnvNumber('MERCHANT_PORT', 8787)
 
@@ -163,14 +132,14 @@ export async function startChannelServer(): Promise<{
       // /subscribe, so agents/registries learn the channel terms up front.
       // Advisory — the runtime 402 session challenge stays authoritative.
       if (path === '/openapi.json') {
-        const offer = advertiseMppx['xrpl/session']({
+        const offer = mppx['xrpl/session']({
           amount: priceDrops(ctx),
           currency: 'XRP',
           channelId: '',
           recipient: store.address,
           description: 'Subscribe to RWA MPT emissions over an XRP payment channel',
         })
-        const doc = generate(advertiseMppx, {
+        const doc = generate(mppx, {
           info: { title: 'Autonomous RWA merchant (channel mode)', version: '1.0.0' },
           serviceInfo: { categories: ['rwa'] },
           routes: [{ handler: offer, method: 'get', path: '/subscribe' }],
@@ -200,7 +169,7 @@ export async function startChannelServer(): Promise<{
         const auth = req.headers.authorization
         if (!auth) {
           // Advertise: 402 session challenge with amount "0" (open commits nothing).
-          const handler = advertiseMppx['xrpl/session']({
+          const handler = mppx['xrpl/session']({
             amount: '0',
             currency: 'XRP',
             channelId: '',
@@ -228,7 +197,7 @@ export async function startChannelServer(): Promise<{
           return
         }
 
-        const handler = methodFor(publicKey)['xrpl/session']({
+        const handler = mppx['xrpl/session']({
           amount: '0',
           currency: 'XRP',
           channelId: '',
@@ -272,7 +241,7 @@ export async function startChannelServer(): Promise<{
           return
         }
 
-        const handler = methodFor(rec.publicKey)['xrpl/session']({
+        const handler = mppx['xrpl/session']({
           amount: priceDrops(ctx),
           currency: 'XRP',
           channelId: rec.channelId,
@@ -377,7 +346,7 @@ export async function startChannelServer(): Promise<{
     ctx,
     close: () =>
       new Promise<void>((resolve, reject) => {
-        for (const { dispose } of methods.values()) dispose() // stop auto-close sweepers
+        channelSvc.dispose() // stop the auto-close sweeper
         server.close((e) => (e ? reject(e) : resolve()))
       }),
   }

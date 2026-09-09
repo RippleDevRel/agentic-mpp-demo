@@ -3,7 +3,7 @@ import { getEnvNumber } from '@agentic-mpp-demo-xrpl/shared'
 import { Receipt } from 'mppx'
 import { generate } from 'mppx/discovery'
 import { Mppx, Store } from 'mppx/server'
-import { toDrops } from 'xrpl-mpp-sdk'
+import { toDrops, type XrplReceiptFields } from 'xrpl-mpp-sdk'
 import { charge } from 'xrpl-mpp-sdk/server'
 import { ensureBootstrapped } from './bootstrap'
 import { buildCatalog, findOffer } from './catalog'
@@ -127,14 +127,21 @@ export async function startServer(): Promise<{
         }
 
         // mppx exposes the receipt only via the Payment-Receipt header it sets on
-        // withReceipt(); peek it to recover the on-chain tx reference.
+        // withReceipt(); peek it to recover the settled payment. Since SDK 0.1.0
+        // the charge receipt names the on-chain hash as `txHash` (with `ledgerIndex`)
+        // instead of only packing it into the opaque `reference`; prefer the named
+        // field and fall back to `reference` (which still carries the same value).
         const peek = result.withReceipt(Response.json({}))
-        const reference = Receipt.fromResponse(peek).reference
-        if (!reference)
-          throw new Error('Payment verified but no receipt reference to key delivery on')
-        log.mpp('payment verified — delivering RWA MPT', { reference })
+        const receipt = Receipt.fromResponse(peek) as Receipt.Receipt & XrplReceiptFields
+        const txHash = receipt.txHash ?? receipt.reference
+        if (!txHash)
+          throw new Error('Payment verified but no receipt txHash/reference to key delivery on')
+        log.mpp('payment verified — delivering RWA MPT', {
+          txHash,
+          ledgerIndex: receipt.ledgerIndex,
+        })
 
-        const delivery = await deliver(ctx, { reference, issuanceId, units: offer.units })
+        const delivery = await deliver(ctx, { reference: txHash, issuanceId, units: offer.units })
         const delivered = {
           issuanceId,
           to: delivery.to,

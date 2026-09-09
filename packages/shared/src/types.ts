@@ -15,6 +15,8 @@ export interface NetworkConfig {
   rpcUrl: string
   /** HTTP JSON-RPC endpoint (OWS broadcasts via curl, which does not speak wss). */
   httpRpcUrl: string
+  /** Faucet endpoint for activating/funding accounts (from the SDK's constants). */
+  faucetUrl: string
   /** Build an explorer link for a tx hash, when one exists. */
   explorerTx?: (hash: string) => string
 }

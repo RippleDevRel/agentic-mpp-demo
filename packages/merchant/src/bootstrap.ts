@@ -1,5 +1,6 @@
 import { getEnv, rwaMetadata } from '@agentic-mpp-demo-xrpl/shared'
 import type { MerchantContext } from './context'
+import { releaseOne } from './issuer'
 
 /** Convert display units (asset-scale aware) to the integer base amount MPTs use. */
 export function unitsToBaseAmount(units: number, assetScale: number): string {
@@ -38,6 +39,14 @@ export async function ensureBootstrapped(ctx: MerchantContext): Promise<void> {
       issuanceId: store.issuanceId,
       remainingUnits: store.remainingUnits,
     })
+  } else if (
+    store.remainingUnits <= 0 &&
+    store.extraIssuances.every((e) => e.remainingUnits <= 0)
+  ) {
+    // Persisted state can be fully sold out (every issuance at 0 remaining), and a
+    // merchant with nothing to sell serves an empty catalog forever. Restock on boot.
+    log.info('all persisted issuances sold out — restocking', { issuanceId: store.issuanceId })
+    await releaseOne(ctx)
   } else {
     log.info('issuance already bootstrapped', { issuanceId: store.issuanceId })
   }

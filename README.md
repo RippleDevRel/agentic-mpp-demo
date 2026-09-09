@@ -90,6 +90,16 @@ payment. The Payment carries an `InvoiceID` (`sha512half(challenge.id)`) that bi
 that specific 402 challenge, so the hardened merchant won't accept an unrelated or replayed
 payment.
 
+**On-chain attribution (SourceTag).** The SDK stamps a default `SourceTag` (`MPP_SOURCE_TAG
+= 593184257`) on every transaction *it* submits (the merchant's issuance/authorize/delivery,
+channel redeem/close). The agent hand-rolls its own transactions through OWS, so they would
+otherwise miss it — the two OWS signers therefore default the **same** tag on every tx they
+sign (a challenge-required `sourceTag` still wins), so agent payments, channel opens/closes,
+opt-ins, trustlines and swaps are all trackable on-ledger as MPP traffic. Verified on-chain
+(the pull Payment and the `PaymentChannelCreate` both carry `593184257`). *(The SDK doesn't
+re-export `MPP_SOURCE_TAG`, so the value is mirrored in `signer/common.ts` — kept in sync
+until it's exported.)*
+
 **Pull mode** is the mirror image and also supported (`payViaMpp(..., 'pull')`, exercised by
 `pnpm check:pull`): OWS signs the same challenge-bound Payment into a blob but the agent does
 **not** broadcast it — it hands the signed blob to the merchant (`type: "transaction"`), which
@@ -465,7 +475,10 @@ It stays merchant-driven (the merchant proposes the channel in a 402) and **XRP-
    credential (the merchant submits it).
 3. The merchant then **starts issuing** RWA MPTs. The agent opts in and pays each with a
    **cumulative `voucher`** (an OWS-signed claim) until it nears the channel capacity, then
-   **closes** (`tfClose`). The merchant redeems the latest voucher (`closeFromStore`).
+   asks the merchant to close. The merchant redeems the latest voucher **and** closes the
+   channel in one **destination-initiated** `PaymentChannelClaim` (`tfClose`, via
+   `closeFromStore`). The agent then attempts its own `tfClose` as a fallback — if the
+   merchant already closed, that returns `tecNO_TARGET`, which is expected (best-effort).
 
 If the agent **disconnects without closing**, the merchant's SDK **auto-close sweeper**
 claims the latest voucher on-chain once the channel has been idle for `CHANNEL_IDLE_MS`
@@ -476,9 +489,10 @@ each round does an on-chain opt-in + delivery + validation, so a too-low idle wi
 let the sweeper fire mid-stream and claim a stale, too-low cumulative while the agent is
 still buying.
 
-**Settle delay & unspent funds.** Closing is funder-initiated (`tfClose`) and not instant:
-it starts a `SettleDelay` (24h here). During that window the merchant can still submit its
-latest voucher to collect everything it earned; only *after* it does any **unclaimed** XRP
+**Settle delay & unspent funds.** Closing carries `tfClose` (here the merchant, as the
+channel destination, redeems and closes in one claim; the agent's own `tfClose` is the
+fallback) and is not instant: it starts a `SettleDelay` (24h here). During that window
+the merchant can still submit its latest voucher to collect everything it earned; only *after* it does any **unclaimed** XRP
 return to the agent — it's the agent's escrowed capital, and the merchant is only ever owed
 what it holds a signed voucher for (handing it un-vouchered funds would be the unsafe
 direction). Until someone closes, the channel stays open indefinitely and the merchant can
@@ -494,6 +508,18 @@ This is the **one mode that uses `OwsXrplSigner`** (the `signHash`/recovery sign
 the public key as a value for the channel + claims, which OWS doesn't expose. Every other
 flow uses the native `signAndSend` signer instead (`buildAgentContext({ signerKind: 'channel' })`
 selects it).
+
+> **One merchant, many funders.** The SDK verifies each channel against the key it names
+> **on the ledger** (its on-chain `PublicKey`), not a configured one, so the channel merchant
+> runs a **single** `channel()` method instance that accepts channels from any number of
+> unrelated agents — no per-funder wiring. The merchant only decodes the `open` blob to record
+> each channel's funder + key for the cooperative on-chain redeem.
+>
+> **Why the agent still hand-rolls the open.** The SDK client can build the
+> `PaymentChannelCreate` from the challenge itself (given a seed and an `openChannel` policy),
+> but that path signs with a key the client holds. Our agent instead OWS-signs the open blob so
+> the key stays in the vault — the SDK explicitly honours a caller-supplied pre-built
+> transaction for exactly this "own signing arrangement" case.
 
 ```bash
 # terminal 1 — channel-mode merchant (XRP pricing):

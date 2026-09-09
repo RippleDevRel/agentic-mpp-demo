@@ -25,7 +25,7 @@ async function main(): Promise<void> {
   // A throwaway destination must exist on-ledger; pull it from the faucet.
   const dest = Wallet.generate()
   log.step('funding a throwaway channel destination', { address: dest.classicAddress })
-  await fetch('https://faucet.altnet.rippletest.net/accounts', {
+  await fetch(network.faucetUrl, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ destination: dest.classicAddress }),
